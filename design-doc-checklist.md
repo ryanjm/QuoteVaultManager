@@ -15,13 +15,13 @@
 - [x] Track and increment next available ID per file
 
 ### 📁 Quote File Management
-- [ ] Create individual quote files per extracted blockquote
-- [ ] Apply naming convention: `[Book Title] - QuoteNNN - [First Few Words].md`
-- [ ] Check and update existing quote files if source content has changed
-- [ ] Skip updating frontmatter fields (`delete`, `favorite`, `source_path`)
-- [ ] Handle deletions:
-  - [ ] From source: delete quote file
-  - [ ] From quote file (`delete: true`): unwrap in source file
+- [x] Create individual quote files per extracted blockquote
+- [x] Apply naming convention: `[Book Title] - QuoteNNN - [First Few Words].md`
+- [x] Check and update existing quote files if source content has changed
+- [x] Skip updating frontmatter fields (`delete`, `favorite`, `source_path`)
+- [x] Handle deletions:
+  - [x] From source: delete quote file
+  - [x] From quote file (`delete: true`): unwrap in source file
 
 ### 🔗 Linking & URIs
 - [ ] Generate Obsidian URI for source file and block ID
