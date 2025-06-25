@@ -34,32 +34,32 @@
 - [x] Implement orphaned quote detection and removal
 
 ### 🚫 Dry Run Support
-- [ ] Add CLI `--dry-run` flag
-- [ ] Implement dry-run checks across all write/delete actions
-- [ ] Log simulated actions
+- [x] Add CLI `--dry-run` flag
+- [x] Implement dry-run checks across all write/delete actions
+- [x] Log simulated actions
 
 ### 🪵 Logging
-- [ ] Set up logging to `std_log_path` and `err_log_path`
-- [ ] Log key events: file actions, errors, config issues, etc.
+- [x] Set up logging to `std_log_path` and `err_log_path`
+- [x] Log key events: file actions, errors, config issues, etc.
 
-### 🛑 Error Handling
-- [ ] Handle and log missing config keys
-- [ ] Handle unreadable files and invalid markdown
-- [ ] Detect and log duplicate block IDs
-- [ ] Catch unexpected YAML fields (warn only unless critical)
+### 🚫 Error Handling
+- [x] Handle and log missing config keys
+- [x] Handle unreadable files and invalid markdown
+- [x] Detect and log duplicate block IDs
+- [x] Catch unexpected YAML fields (warn only unless critical)
 
 ### 🧪 Testing
-- [ ] Unit tests:
-  - [ ] Markdown parsing
-  - [ ] Block ID generation
-  - [ ] Quote file generation
-  - [ ] URI creation
-- [ ] Manual test with sample vaults (dry-run and real)
-- [ ] End-to-end test with backups enabled
+- [x] Unit tests:
+  - [x] Markdown parsing
+  - [x] Block ID generation
+  - [x] Quote file generation
+  - [x] URI creation
+- [x] Manual test with sample vaults (dry-run and real)
+- [x] End-to-end test with backups enabled
 
 ### 🚀 CLI Interface
-- [ ] Create CLI interface in `__main__.py`
-- [ ] Parse flags and run main sync logic
+- [x] Create CLI interface in `__main__.py`
+- [x] Parse flags and run main sync logic
 
 ---
 

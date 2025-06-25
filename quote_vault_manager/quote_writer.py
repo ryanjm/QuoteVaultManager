@@ -45,16 +45,20 @@ def create_quote_content(quote_text: str, source_file: str, block_id: str, sourc
     encoded_block = quote(block_id)
     uri = f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}"
     
-    # Remove .md extension from link text
-    link_text = source_file.replace('.md', '')
+    # Use only the filename for the link text
+    link_text = os.path.basename(source_file).replace('.md', '')
+    
+    # Format multi-line quotes properly
+    quote_lines = quote_text.split('\n')
+    formatted_quote = '\n'.join(f'> {line}' for line in quote_lines)
     
     content = f"""---
 delete: false
 favorite: false
-source_path: "{source_file}"
+source_path: "{os.path.basename(source_file)}"
 ---
 
-> {quote_text}
+{formatted_quote}
 
 **Source:** [{link_text}]({uri})
 """
@@ -127,14 +131,18 @@ def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_fil
             encoded_block = quote(block_id)
             uri = f"obsidian://open?vault=Notes&file={encoded_file}%23{encoded_block}"
             
-            # Remove .md extension from link text
-            link_text = source_file.replace('.md', '')
+            # Use only the filename for the link text
+            link_text = os.path.basename(source_file).replace('.md', '')
+            
+            # Format multi-line quotes properly
+            quote_lines = new_quote_text.split('\n')
+            formatted_quote = '\n'.join(f'> {line}' for line in quote_lines)
             
             new_content = f"""---
 {frontmatter}
 ---
 
-> {new_quote_text}
+{formatted_quote}
 
 **Source:** [{link_text}]({uri})
 """
@@ -312,9 +320,11 @@ def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: 
                     has_block_id = True
                     i += 1
                 
-                # Check if this quote matches our target quote
-                current_quote_text = ' '.join(quote_lines)
-                if current_quote_text == quote_text and not has_block_id:
+                # Check if this quote matches our target quote (normalize whitespace)
+                current_quote_text = '\n'.join(quote_lines).strip()
+                target_quote_text = quote_text.strip()
+                
+                if current_quote_text == target_quote_text and not has_block_id:
                     # This is our target quote and it doesn't have a block ID
                     # Add the block ID
                     for j in range(quote_start, i):

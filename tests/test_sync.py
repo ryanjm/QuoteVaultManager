@@ -344,6 +344,83 @@ source_path: "{source_filename}"
         
         print("Orphaned quote detection and removal tests passed.")
 
+def test_unique_block_id_assignment():
+    """Test that multiple quotes without block IDs get assigned unique, sequential block IDs."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create source file with multiple quotes without block IDs
+        source_file = os.path.join(temp_dir, "test_source.md")
+        source_content = """---
+sync_quotes: true
+---
+
+> First quote without ID
+
+> Second quote without ID
+
+> Third quote without ID
+"""
+        with open(source_file, 'w') as f:
+            f.write(source_content)
+        
+        # Create destination directory
+        dest_dir = os.path.join(temp_dir, "quotes")
+        os.makedirs(dest_dir, exist_ok=True)
+        
+        # Test sync (dry run first)
+        results = sync_source_file(source_file, dest_dir, dry_run=True)
+        
+        assert results['quotes_processed'] == 3
+        assert results['quotes_created'] == 3
+        assert results['block_ids_added'] == 3
+        
+        # Test actual sync
+        results = sync_source_file(source_file, dest_dir, dry_run=False)
+        
+        assert results['quotes_processed'] == 3
+        assert results['quotes_created'] == 3
+        assert results['block_ids_added'] == 3
+        
+        # Check that source file has unique block IDs
+        with open(source_file, 'r') as f:
+            content = f.read()
+            assert '^Quote001' in content
+            assert '^Quote002' in content
+            assert '^Quote003' in content
+            
+            # Verify they appear in the right order
+            lines = content.splitlines()
+            quote001_line = None
+            quote002_line = None
+            quote003_line = None
+            
+            for i, line in enumerate(lines):
+                if line.strip() == '^Quote001':
+                    quote001_line = i
+                elif line.strip() == '^Quote002':
+                    quote002_line = i
+                elif line.strip() == '^Quote003':
+                    quote003_line = i
+            
+            assert quote001_line is not None
+            assert quote002_line is not None
+            assert quote003_line is not None
+            assert quote001_line < quote002_line < quote003_line
+        
+        # Check that destination files were created with unique names
+        book_dir = os.path.join(dest_dir, "test_source")
+        assert os.path.exists(book_dir)
+        
+        book_files = [f for f in os.listdir(book_dir) if f.endswith('.md')]
+        assert len(book_files) == 3
+        
+        # Verify filenames contain different block IDs
+        filenames = ' '.join(book_files)
+        assert 'Quote001' in filenames
+        assert 'Quote002' in filenames
+        assert 'Quote003' in filenames
+        
+        print("Unique block ID assignment tests passed.")
+
 if __name__ == "__main__":
     test_has_sync_quotes_flag()
     test_get_markdown_files()
@@ -353,4 +430,5 @@ if __name__ == "__main__":
     test_sync_vaults()
     test_skip_files_without_sync_quotes_flag()
     test_orphaned_quote_detection_and_removal()
+    test_unique_block_id_assignment()
     print("All sync tests passed!") 

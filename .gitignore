@@ -19,3 +19,8 @@ tests/__pycache__/
 
 # Logs
 *.log 
+
+# Test files
+tests/TestVault/
+tests/TestQuoteVault/
+config.yaml

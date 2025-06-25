@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Set
 
 def extract_blockquotes(markdown: str) -> List[str]:
     """
@@ -45,6 +45,30 @@ def extract_blockquotes_with_ids(markdown: str) -> List[Tuple[str, Optional[str]
         else:
             i += 1
     return blockquotes
+
+def validate_block_ids(markdown: str) -> List[str]:
+    """
+    Validates block IDs in markdown text and returns a list of errors.
+    Checks for duplicate block IDs and invalid formats.
+    """
+    errors = []
+    seen_ids: Set[str] = set()
+    line_number = 0
+    
+    for line in markdown.splitlines():
+        line_number += 1
+        stripped_line = line.strip()
+        
+        if BLOCK_ID_PATTERN.match(stripped_line):
+            block_id = stripped_line
+            if block_id in seen_ids:
+                errors.append(f"Duplicate block ID '{block_id}' found at line {line_number}")
+            else:
+                seen_ids.add(block_id)
+        elif stripped_line.startswith('^Quote') and not BLOCK_ID_PATTERN.match(stripped_line):
+            errors.append(f"Invalid block ID format '{stripped_line}' at line {line_number}. Expected format: ^QuoteNNN (where NNN is 3 digits)")
+    
+    return errors
 
 def get_next_block_id(markdown: str) -> str:
     """

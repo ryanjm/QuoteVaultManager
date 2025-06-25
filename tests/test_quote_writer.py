@@ -363,7 +363,7 @@ More text.
             f.write(source_content)
         
         # Test adding block ID to first quote (dry run)
-        modified = ensure_block_id_in_source(source_file, "This is a quote without a block ID It has multiple lines", "^Quote001", dry_run=True)
+        modified = ensure_block_id_in_source(source_file, "This is a quote without a block ID\nIt has multiple lines", "^Quote001", dry_run=True)
         assert modified
         
         # Check that file wasn't actually modified in dry run
@@ -372,7 +372,7 @@ More text.
             assert "^Quote001" not in content
         
         # Test actual block ID addition
-        modified = ensure_block_id_in_source(source_file, "This is a quote without a block ID It has multiple lines", "^Quote001", dry_run=False)
+        modified = ensure_block_id_in_source(source_file, "This is a quote without a block ID\nIt has multiple lines", "^Quote001", dry_run=False)
         assert modified
         
         # Check that the block ID was added
@@ -402,7 +402,7 @@ More text.
         assert modified
         
         # Test adding block ID to quote that already has one (should not modify)
-        modified = ensure_block_id_in_source(source_file, "This is a quote without a block ID It has multiple lines", "^Quote003", dry_run=False)
+        modified = ensure_block_id_in_source(source_file, "This is a quote without a block ID\nIt has multiple lines", "^Quote003", dry_run=False)
         assert not modified
         
         print("Block ID addition tests passed.")

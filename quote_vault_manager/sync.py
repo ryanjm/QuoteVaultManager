@@ -2,7 +2,7 @@ import os
 import yaml
 from typing import List, Dict, Any
 from .config import load_config, ConfigError
-from .quote_parser import extract_blockquotes_with_ids, get_next_block_id
+from .quote_parser import extract_blockquotes_with_ids, get_next_block_id, validate_block_ids
 from .quote_writer import (
     write_quote_file, update_quote_file_if_changed, delete_quote_file,
     find_quote_files_for_source, has_delete_flag, unwrap_quote_in_source,
@@ -70,24 +70,55 @@ def sync_source_file(source_file: str, destination_path: str, dry_run: bool = Fa
     
     try:
         # Read source file content
-        with open(source_file, 'r', encoding='utf-8') as f:
-            content = f.read()
+        try:
+            with open(source_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except UnicodeDecodeError as e:
+            results['errors'].append(f"Unicode decode error in {source_file}: {e}")
+            return results
+        except PermissionError as e:
+            results['errors'].append(f"Permission denied reading {source_file}: {e}")
+            return results
+        except Exception as e:
+            results['errors'].append(f"Error reading {source_file}: {e}")
+            return results
+        
+        # Validate block IDs before processing
+        block_id_errors = validate_block_ids(content)
+        if block_id_errors:
+            for error in block_id_errors:
+                results['errors'].append(f"{source_file}: {error}")
+            return results
         
         # Extract quotes with their block IDs
         quotes_with_ids = extract_blockquotes_with_ids(content)
+        
+        # Track used block IDs
+        used_block_nums = set()
+        for _, block_id in quotes_with_ids:
+            if block_id and block_id.startswith('^Quote'):
+                try:
+                    used_block_nums.add(int(block_id.replace('^Quote', '')))
+                except Exception:
+                    pass
+        next_block_num = max(used_block_nums) + 1 if used_block_nums else 1
         
         # Get book title
         book_title = get_book_title_from_path(source_file)
         
         # Process each quote
-        for quote_text, block_id in quotes_with_ids:
+        for idx, (quote_text, block_id) in enumerate(quotes_with_ids):
             results['quotes_processed'] += 1
             
             # If quote doesn't have a block ID, assign one
             if block_id is None:
-                block_id = get_next_block_id(content)
+                block_id = f'^Quote{next_block_num:03d}'
+                next_block_num += 1
                 ensure_block_id_in_source(source_file, quote_text, block_id, dry_run)
                 results['block_ids_added'] += 1
+                # Update content so subsequent get_next_block_id sees the new ID
+                with open(source_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
             
             # Generate quote filename
             from .quote_writer import create_quote_filename
@@ -106,8 +137,13 @@ def sync_source_file(source_file: str, destination_path: str, dry_run: bool = Fa
                 results['quotes_created'] += 1
         
         # Handle orphaned quotes (quotes that exist in destination but not in source)
+        # Re-extract quotes to get updated block IDs after assignment
+        with open(source_file, 'r', encoding='utf-8') as f:
+            updated_content = f.read()
+        updated_quotes_with_ids = extract_blockquotes_with_ids(updated_content)
+        existing_block_ids = {block_id for _, block_id in updated_quotes_with_ids if block_id is not None}
+        
         existing_quote_files = find_quote_files_for_source(destination_path, source_file)
-        existing_block_ids = {block_id for _, block_id in quotes_with_ids if block_id is not None}
         
         for quote_file in existing_quote_files:
             # Extract block ID from filename
