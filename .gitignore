@@ -1,0 +1,21 @@
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+dquote-mgr-env/
+quote-mgr-env/
+
+# Test cache and artifacts
+.pytest_cache/
+tests/__pycache__/
+
+# OS and editor files
+.DS_Store
+*.swp
+*.swo
+
+# Logs
+*.log 
