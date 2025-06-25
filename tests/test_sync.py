@@ -160,7 +160,7 @@ source_path: "test_source.md"
 
 > Quote to be deleted
 
-**Source:** [test_source](obsidian://open?vault=Notes&file=test_source.md%23%5EQuote001)
+**Source:** [test_source](obsidian://open?vault=Notes&file=test_source%23%5EQuote001)
 """
         with open(quote_file, 'w') as f:
             f.write(quote_content)
@@ -314,7 +314,7 @@ source_path: "{source_filename}"
 
 > Orphaned quote
 
-**Source:** [test_source](obsidian://open?vault=Notes&file=test_source.md%23%5EQuote999)
+**Source:** [test_source](obsidian://open?vault=Notes&file=test_source%23%5EQuote999)
 """
         with open(orphaned_file, 'w') as f:
             f.write(orphaned_content)

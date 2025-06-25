@@ -11,7 +11,8 @@ from quote_vault_manager.quote_writer import (
     find_quote_files_for_source,
     has_delete_flag,
     unwrap_quote_in_source,
-    ensure_block_id_in_source
+    ensure_block_id_in_source,
+    create_obsidian_uri
 )
 
 def test_create_quote_filename():
@@ -45,7 +46,7 @@ def test_create_quote_content():
     assert "favorite: false" in result
     assert 'source_path: "Deep Work.md"' in result
     assert "> Focus without distraction is the key to producing great work." in result
-    assert "**Source:** [Deep Work](obsidian://open?vault=Notes&file=Deep%20Work.md%23%5EQuote001)" in result
+    assert "**Source:** [Deep Work](obsidian://open?vault=Notes&file=Deep%20Work%23%5EQuote001)" in result
     assert "obsidian://open?vault=Notes&file=" in result
     
     print("Quote content tests passed.")
@@ -62,7 +63,7 @@ source_path: "test.md"
 
 > This is a test quote
 
-**Source:** [test](obsidian://open?vault=Notes&file=test.md%23%5EQuote001)
+**Source:** [test](obsidian://open?vault=Notes&file=test%23%5EQuote001)
 """
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
@@ -91,7 +92,7 @@ delete: false
 > This is the first line
 > This is the second line
 
-**Source:** [test](obsidian://open?vault=Notes&file=test.md%23%5EQuote001)
+**Source:** [test](obsidian://open?vault=Notes&file=test%23%5EQuote001)
 """
     
     result = extract_quote_text_from_content(content)
@@ -113,7 +114,7 @@ source_path: "test.md"
 
 > Original quote text
 
-**Source:** [test](obsidian://open?vault=Notes&file=test.md%23%5EQuote001)
+**Source:** [test](obsidian://open?vault=Notes&file=test%23%5EQuote001)
 """
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(initial_content)
@@ -212,7 +213,7 @@ source_path: "test.md"
 
 > Quote 1
 
-**Source:** [test](obsidian://open?vault=Notes&file=test.md%23%5EQuote001)
+**Source:** [test](obsidian://open?vault=Notes&file=test%23%5EQuote001)
 """
         quote1_path = os.path.join(book_dir, "Test Book - Quote001 - Quote 1.md")
         with open(quote1_path, 'w') as f:
@@ -227,7 +228,7 @@ source_path: "other.md"
 
 > Quote 2
 
-**Source:** [other](obsidian://open?vault=Notes&file=other.md%23%5EQuote001)
+**Source:** [other](obsidian://open?vault=Notes&file=other%23%5EQuote001)
 """
         quote2_path = os.path.join(book_dir, "Test Book - Quote002 - Quote 2.md")
         with open(quote2_path, 'w') as f:
@@ -261,7 +262,7 @@ source_path: "test.md"
 
 > Test quote
 
-**Source:** [test](obsidian://open?vault=Notes&file=test.md%23%5EQuote001)
+**Source:** [test](obsidian://open?vault=Notes&file=test%23%5EQuote001)
 """
         with open(file_path, 'w') as f:
             f.write(content)
@@ -279,7 +280,7 @@ source_path: "test.md"
 
 > Test quote
 
-**Source:** [test](obsidian://open?vault=Notes&file=test.md%23%5EQuote001)
+**Source:** [test](obsidian://open?vault=Notes&file=test%23%5EQuote001)
 """
         with open(file_path2, 'w') as f:
             f.write(content2)
@@ -407,6 +408,32 @@ More text.
         
         print("Block ID addition tests passed.")
 
+def test_create_obsidian_uri():
+    """Test that Obsidian URIs are created in the correct format."""
+    from quote_vault_manager.quote_writer import create_obsidian_uri
+    
+    # Test basic filename
+    uri = create_obsidian_uri("Deep Work.md", "^Quote001")
+    expected = "obsidian://open?vault=Notes&file=Deep%20Work%23%5EQuote001"
+    assert uri == expected, f"Expected {expected}, got {uri}"
+    
+    # Test filename with relative path
+    uri2 = create_obsidian_uri("Test/File.md", "^Quote002", vault_root="Test")
+    expected2 = "obsidian://open?vault=Notes&file=File%23%5EQuote002"
+    assert uri2 == expected2, f"Expected {expected2}, got {uri2}"
+    
+    # Test filename with nested relative path
+    uri3 = create_obsidian_uri("Books/Deep Work.md", "^Quote003", vault_root="Books")
+    expected3 = "obsidian://open?vault=Notes&file=Deep%20Work%23%5EQuote003"
+    assert uri3 == expected3, f"Expected {expected3}, got {uri3}"
+    
+    # Test custom vault name
+    uri4 = create_obsidian_uri("My Book.md", "^Quote004", source_vault="MyVault")
+    expected4 = "obsidian://open?vault=MyVault&file=My%20Book%23%5EQuote004"
+    assert uri4 == expected4, f"Expected {expected4}, got {uri4}"
+    
+    print("Obsidian URI format tests passed.")
+
 if __name__ == "__main__":
     test_create_quote_filename()
     test_create_quote_content()
@@ -419,4 +446,5 @@ if __name__ == "__main__":
     test_has_delete_flag()
     test_unwrap_quote_in_source()
     test_ensure_block_id_in_source()
+    test_create_obsidian_uri()
     print("All quote writer tests passed!") 

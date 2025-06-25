@@ -6,7 +6,7 @@ from .quote_parser import extract_blockquotes_with_ids, get_next_block_id, valid
 from .quote_writer import (
     write_quote_file, update_quote_file_if_changed, delete_quote_file,
     find_quote_files_for_source, has_delete_flag, unwrap_quote_in_source,
-    ensure_block_id_in_source
+    ensure_block_id_in_source, create_obsidian_uri
 )
 
 def has_sync_quotes_flag(file_path: str) -> bool:
@@ -54,7 +54,11 @@ def get_book_title_from_path(file_path: str) -> str:
     filename = os.path.basename(file_path)
     return filename.replace('.md', '')
 
-def sync_source_file(source_file: str, destination_path: str, dry_run: bool = False) -> Dict[str, Any]:
+def get_vault_name_from_path(vault_path: str) -> str:
+    """Extracts the vault name (last folder) from a full vault path."""
+    return os.path.basename(os.path.normpath(vault_path))
+
+def sync_source_file(source_file: str, destination_path: str, dry_run: bool = False, source_vault_path: str = None) -> Dict[str, Any]:
     """
     Syncs a single source file to the quote vault.
     Returns a dictionary with sync results.
@@ -67,6 +71,9 @@ def sync_source_file(source_file: str, destination_path: str, dry_run: bool = Fa
         'block_ids_added': 0,
         'errors': []
     }
+    
+    # Extract vault name for Obsidian URI
+    vault_name = get_vault_name_from_path(source_vault_path) if source_vault_path else "Notes"
     
     try:
         # Read source file content
@@ -128,12 +135,12 @@ def sync_source_file(source_file: str, destination_path: str, dry_run: bool = Fa
             # Check if quote file exists
             if os.path.exists(quote_file_path):
                 # Update existing quote file if content changed
-                updated = update_quote_file_if_changed(quote_file_path, quote_text, source_file, block_id, dry_run)
+                updated = update_quote_file_if_changed(quote_file_path, quote_text, source_file, block_id, dry_run, vault_name, source_vault_path)
                 if updated:
                     results['quotes_updated'] += 1
             else:
                 # Create new quote file
-                write_quote_file(destination_path, book_title, block_id, quote_text, source_file, dry_run)
+                write_quote_file(destination_path, book_title, block_id, quote_text, source_file, dry_run, vault_name, source_vault_path)
                 results['quotes_created'] += 1
         
         # Handle orphaned quotes (quotes that exist in destination but not in source)
@@ -246,7 +253,7 @@ def sync_vaults(config: Dict[str, str], dry_run: bool = False) -> Dict[str, Any]
     
     for file_path in markdown_files:
         if has_sync_quotes_flag(file_path):
-            file_results = sync_source_file(file_path, destination_vault_path, dry_run)
+            file_results = sync_source_file(file_path, destination_vault_path, dry_run, source_vault_path)
             
             results['source_files_processed'] += 1
             results['total_quotes_processed'] += file_results['quotes_processed']

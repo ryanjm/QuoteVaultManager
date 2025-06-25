@@ -3,6 +3,26 @@ from typing import Optional
 from urllib.parse import quote
 import re
 
+def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "Notes", vault_root: str = "") -> str:
+    """
+    Creates an Obsidian URI in the correct format.
+    The file path should be relative to the vault and not include .md extension.
+    If vault_root is provided, source_file is made relative to it.
+    """
+    # Remove .md extension
+    if source_file.endswith('.md'):
+        source_file = source_file[:-3]
+    # If vault_root is provided, make path relative
+    if vault_root:
+        rel_path = os.path.relpath(source_file, vault_root)
+    else:
+        rel_path = source_file
+    # Normalize to forward slashes
+    rel_path = rel_path.replace(os.sep, '/')
+    encoded_file = quote(rel_path)
+    encoded_block = quote(block_id)
+    return f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}"
+
 def create_quote_filename(book_title: str, block_id: str, quote_text: str) -> str:
     """
     Creates a filename for a quote file using the convention:
@@ -36,14 +56,12 @@ def create_quote_filename(book_title: str, block_id: str, quote_text: str) -> st
     
     return f"{book_title} - {clean_block_id} - {first_words}.md"
 
-def create_quote_content(quote_text: str, source_file: str, block_id: str, source_vault: str = "Notes") -> str:
+def create_quote_content(quote_text: str, source_file: str, block_id: str, vault_name: str = "Notes", vault_root: str = "") -> str:
     """
     Creates the content for a quote file including frontmatter and source link.
     """
     # Create Obsidian URI for source
-    encoded_file = quote(source_file)
-    encoded_block = quote(block_id)
-    uri = f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}"
+    uri = create_obsidian_uri(source_file, block_id, vault_name, vault_root)
     
     # Use only the filename for the link text
     link_text = os.path.basename(source_file).replace('.md', '')
@@ -101,7 +119,7 @@ def extract_quote_text_from_content(content: str) -> Optional[str]:
     return '\n'.join(quote_lines) if quote_lines else None
 
 def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_file: str, 
-                                block_id: str, dry_run: bool = False) -> bool:
+                                block_id: str, dry_run: bool = False, vault_name: str = "Notes", vault_root: str = "") -> bool:
     """
     Updates a quote file if the quote content has changed.
     Preserves existing frontmatter.
@@ -112,7 +130,7 @@ def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_fil
     if frontmatter is None:
         # File doesn't exist or is corrupted, create new one
         if not dry_run:
-            content = create_quote_content(new_quote_text, source_file, block_id)
+            content = create_quote_content(new_quote_text, source_file, block_id, vault_name, vault_root)
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
         return True
@@ -127,17 +145,10 @@ def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_fil
         # Quote content has changed, update it
         if not dry_run:
             # Create new content with existing frontmatter
-            encoded_file = quote(source_file)
-            encoded_block = quote(block_id)
-            uri = f"obsidian://open?vault=Notes&file={encoded_file}%23{encoded_block}"
-            
-            # Use only the filename for the link text
+            uri = create_obsidian_uri(source_file, block_id, vault_name, vault_root)
             link_text = os.path.basename(source_file).replace('.md', '')
-            
-            # Format multi-line quotes properly
             quote_lines = new_quote_text.split('\n')
             formatted_quote = '\n'.join(f'> {line}' for line in quote_lines)
-            
             new_content = f"""---
 {frontmatter}
 ---
@@ -153,7 +164,7 @@ def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_fil
     return False
 
 def write_quote_file(destination_path: str, book_title: str, block_id: str, 
-                    quote_text: str, source_file: str, dry_run: bool = False) -> str:
+                    quote_text: str, source_file: str, dry_run: bool = False, vault_name: str = "Notes", vault_root: str = "") -> str:
     """
     Creates a quote file in the destination directory.
     Returns the path to the created file.
@@ -168,7 +179,7 @@ def write_quote_file(destination_path: str, book_title: str, block_id: str,
     file_path = os.path.join(book_dir, filename)
     
     if not dry_run:
-        content = create_quote_content(quote_text, source_file, block_id)
+        content = create_quote_content(quote_text, source_file, block_id, vault_name, vault_root)
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
     
