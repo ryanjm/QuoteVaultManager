@@ -58,7 +58,10 @@ def get_vault_name_from_path(vault_path: str) -> str:
     """Extracts the vault name (last folder) from a full vault path."""
     return os.path.basename(os.path.normpath(vault_path))
 
-def sync_source_file(source_file: str, destination_path: str, dry_run: bool = False, source_vault_path: str = None) -> Dict[str, Any]:
+def sync_source_file(source_file: str, 
+    destination_path: str, 
+    dry_run: bool = False, 
+    source_vault_path: str | None = None) -> Dict[str, Any]:
     """
     Syncs a single source file to the quote vault.
     Returns a dictionary with sync results.
@@ -135,12 +138,12 @@ def sync_source_file(source_file: str, destination_path: str, dry_run: bool = Fa
             # Check if quote file exists
             if os.path.exists(quote_file_path):
                 # Update existing quote file if content changed
-                updated = update_quote_file_if_changed(quote_file_path, quote_text, source_file, block_id, dry_run, vault_name, source_vault_path)
+                updated = update_quote_file_if_changed(quote_file_path, quote_text, source_file, block_id, dry_run, vault_name, source_vault_path or "")
                 if updated:
                     results['quotes_updated'] += 1
             else:
                 # Create new quote file
-                write_quote_file(destination_path, book_title, block_id, quote_text, source_file, dry_run, vault_name, source_vault_path)
+                write_quote_file(destination_path, book_title, block_id, quote_text, source_file, dry_run, vault_name, source_vault_path or "")
                 results['quotes_created'] += 1
         
         # Handle orphaned quotes (quotes that exist in destination but not in source)
