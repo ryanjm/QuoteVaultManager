@@ -29,9 +29,9 @@
 - [x] Ensure source file links to block ID for bidirectional linking
 
 ### 🔁 Sync Logic
-- [ ] Implement sync controller in `sync.py`
-- [ ] Skip files without `sync_quotes: true`
-- [ ] Implement orphaned quote detection and removal
+- [x] Implement sync controller in `sync.py`
+- [x] Skip files without `sync_quotes: true`
+- [x] Implement orphaned quote detection and removal
 
 ### 🚫 Dry Run Support
 - [ ] Add CLI `--dry-run` flag

@@ -193,13 +193,16 @@ def find_quote_files_for_source(destination_path: str, source_file: str) -> list
     if not os.path.exists(destination_path):
         return quote_files
     
+    # Extract just the filename from the source_file path
+    source_filename = os.path.basename(source_file)
+    
     for root, dirs, files in os.walk(destination_path):
         for file in files:
             if file.endswith('.md'):
                 file_path = os.path.join(root, file)
                 try:
                     frontmatter, _ = read_quote_file_content(file_path)
-                    if frontmatter and f'source_path: "{source_file}"' in frontmatter:
+                    if frontmatter and f'source_path: "{source_filename}"' in frontmatter:
                         quote_files.append(file_path)
                 except Exception:
                     continue
