@@ -1,0 +1,4 @@
+source_vault_path: "/path/to/source/vault"
+destination_vault_path: "/path/to/destination/vault"
+std_log_path: "quote_vault_manager.log"
+err_log_path: "quote_vault_manager.err.log"

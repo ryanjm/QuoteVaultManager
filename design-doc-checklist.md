@@ -1,18 +1,18 @@
 ## ✅ Execution Checklist for Implementation
 
 ### 🔧 Config & Setup
-- [ ] Create `config.yaml` format and example file
-- [ ] Implement `config.py` to load and validate YAML keys:
+- [x] Create `config.yaml` format and example file
+- [x] Implement `config.py` to load and validate YAML keys:
   - `source_vault_path`
   - `destination_vault_path`
   - `std_log_path`
   - `err_log_path`
 
 ### 🧠 Parsing & Extraction
-- [ ] Implement markdown parser to extract multiline blockquotes
-- [ ] Handle grouping of consecutive `>` lines
-- [ ] Detect and parse block IDs (`^QuoteNNN`)
-- [ ] Track and increment next available ID per file
+- [x] Implement markdown parser to extract multiline blockquotes
+- [x] Handle grouping of consecutive `>` lines
+- [x] Detect and parse block IDs (`^QuoteNNN`)
+- [x] Track and increment next available ID per file
 
 ### 📁 Quote File Management
 - [ ] Create individual quote files per extracted blockquote
