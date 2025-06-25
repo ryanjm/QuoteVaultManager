@@ -270,4 +270,67 @@ def unwrap_quote_in_source(source_file_path: str, block_id: str, dry_run: bool =
         return modified
         
     except Exception:
+        return False
+
+def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: str, dry_run: bool = False) -> bool:
+    """
+    Ensures that a quote in the source file has the specified block ID.
+    If the quote doesn't have a block ID, adds it.
+    Returns True if the file was modified, False otherwise.
+    """
+    if not os.path.exists(source_file_path):
+        return False
+    
+    try:
+        with open(source_file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        lines = content.splitlines()
+        modified = False
+        new_lines = []
+        i = 0
+        
+        while i < len(lines):
+            line = lines[i]
+            
+            # Check if this line starts a blockquote
+            if line.strip().startswith('>'):
+                quote_lines = []
+                quote_start = i
+                
+                # Collect all consecutive blockquote lines
+                while i < len(lines) and lines[i].strip().startswith('>'):
+                    quote_lines.append(lines[i].lstrip('> ').rstrip())
+                    i += 1
+                
+                # Check if the next line is a block ID
+                has_block_id = False
+                if i < len(lines) and lines[i].strip().startswith('^Quote'):
+                    has_block_id = True
+                    i += 1
+                
+                # Check if this quote matches our target quote
+                current_quote_text = ' '.join(quote_lines)
+                if current_quote_text == quote_text and not has_block_id:
+                    # This is our target quote and it doesn't have a block ID
+                    # Add the block ID
+                    for j in range(quote_start, i):
+                        new_lines.append(lines[j])
+                    new_lines.append(block_id)
+                    modified = True
+                else:
+                    # Not our target quote or already has block ID, keep as is
+                    for j in range(quote_start, i):
+                        new_lines.append(lines[j])
+            else:
+                new_lines.append(line)
+                i += 1
+        
+        if modified and not dry_run:
+            with open(source_file_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(new_lines))
+        
+        return modified
+        
+    except Exception:
         return False 

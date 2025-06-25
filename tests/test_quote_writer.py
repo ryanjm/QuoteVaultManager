@@ -10,7 +10,8 @@ from quote_vault_manager.quote_writer import (
     delete_quote_file,
     find_quote_files_for_source,
     has_delete_flag,
-    unwrap_quote_in_source
+    unwrap_quote_in_source,
+    ensure_block_id_in_source
 )
 
 def test_create_quote_filename():
@@ -341,6 +342,71 @@ More text.
         
         print("Quote unwrapping tests passed.")
 
+def test_ensure_block_id_in_source():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create a test source file
+        source_file = os.path.join(temp_dir, "test_source.md")
+        source_content = """# Test Document
+
+Some text before.
+
+> This is a quote without a block ID
+> It has multiple lines
+
+Some text after.
+
+> This is another quote without a block ID
+
+More text.
+"""
+        with open(source_file, 'w') as f:
+            f.write(source_content)
+        
+        # Test adding block ID to first quote (dry run)
+        modified = ensure_block_id_in_source(source_file, "This is a quote without a block ID It has multiple lines", "^Quote001", dry_run=True)
+        assert modified
+        
+        # Check that file wasn't actually modified in dry run
+        with open(source_file, 'r') as f:
+            content = f.read()
+            assert "^Quote001" not in content
+        
+        # Test actual block ID addition
+        modified = ensure_block_id_in_source(source_file, "This is a quote without a block ID It has multiple lines", "^Quote001", dry_run=False)
+        assert modified
+        
+        # Check that the block ID was added
+        with open(source_file, 'r') as f:
+            content = f.read()
+            print(f"DEBUG: Content after block ID addition:\n{content}")
+            assert "^Quote001" in content
+            # Verify it's after the correct quote
+            lines = content.splitlines()
+            quote_found = False
+            for i, line in enumerate(lines):
+                if line.strip().startswith('>') and "This is a quote without a block ID" in line:
+                    quote_found = True
+                    # Look for the block ID after the quote lines
+                    j = i
+                    while j < len(lines) and lines[j].strip().startswith('>'):
+                        j += 1
+                    # Check if next line is the block ID
+                    if j < len(lines) and lines[j].strip() == "^Quote001":
+                        break
+                    else:
+                        assert False, "Block ID not found after quote"
+            assert quote_found
+        
+        # Test adding block ID to second quote
+        modified = ensure_block_id_in_source(source_file, "This is another quote without a block ID", "^Quote002", dry_run=False)
+        assert modified
+        
+        # Test adding block ID to quote that already has one (should not modify)
+        modified = ensure_block_id_in_source(source_file, "This is a quote without a block ID It has multiple lines", "^Quote003", dry_run=False)
+        assert not modified
+        
+        print("Block ID addition tests passed.")
+
 if __name__ == "__main__":
     test_create_quote_filename()
     test_create_quote_content()
@@ -352,4 +418,5 @@ if __name__ == "__main__":
     test_find_quote_files_for_source()
     test_has_delete_flag()
     test_unwrap_quote_in_source()
+    test_ensure_block_id_in_source()
     print("All quote writer tests passed!") 

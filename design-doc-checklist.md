@@ -24,9 +24,9 @@
   - [x] From quote file (`delete: true`): unwrap in source file
 
 ### 🔗 Linking & URIs
-- [ ] Generate Obsidian URI for source file and block ID
-- [ ] Insert URI into quote file `**Source:**` section
-- [ ] Ensure source file links to block ID for bidirectional linking
+- [x] Generate Obsidian URI for source file and block ID
+- [x] Insert URI into quote file `**Source:**` section
+- [x] Ensure source file links to block ID for bidirectional linking
 
 ### 🔁 Sync Logic
 - [ ] Implement sync controller in `sync.py`
