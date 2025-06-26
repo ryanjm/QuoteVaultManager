@@ -194,7 +194,6 @@ def process_delete_flags(destination_path: str, source_vault_path: str, dry_run:
                 quote_file_path = os.path.join(root, file)
                 
                 if has_delete_flag(quote_file_path):
-                    print(f"Found quote file with delete:true: {quote_file_path}")
                     try:
                         # Read the quote file to get source file and block ID
                         from .quote_writer import read_quote_file_content
@@ -212,7 +211,6 @@ def process_delete_flags(destination_path: str, source_vault_path: str, dry_run:
                                         for root_dir, _, files_in_dir in os.walk(source_vault_path):
                                             if source_file in files_in_dir:
                                                 found_path = os.path.join(root_dir, source_file)
-                                                print(f"  Fallback: found source file at {found_path}")
                                                 break
                                         if found_path:
                                             source_file_path = found_path
@@ -221,7 +219,6 @@ def process_delete_flags(destination_path: str, source_vault_path: str, dry_run:
                                             print(error_msg)
                                             results['errors'].append(error_msg)
                                             continue
-                                    print(f"  Source file resolved to: {source_file_path}")
                                     # Extract block ID from filename
                                     filename = os.path.basename(quote_file_path)
                                     if ' - Quote' in filename:
@@ -229,10 +226,8 @@ def process_delete_flags(destination_path: str, source_vault_path: str, dry_run:
                                         if len(parts) >= 2:
                                             block_id_part = parts[1].split(' - ')[0]
                                             block_id = f"^Quote{block_id_part}"
-                                            print(f"  Attempting to unwrap block ID {block_id} in {source_file_path}")
                                             # Unwrap the quote in source file
                                             unwrapped = unwrap_quote_in_source(source_file_path, block_id, dry_run)
-                                            print(f"    Unwrap result: {unwrapped}")
                                             if unwrapped:
                                                 results['quotes_unwrapped'] += 1
                                             # Delete the quote file
