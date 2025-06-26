@@ -1,4 +1,0 @@
-source_vault_path: "./tests/TestVault"
-destination_vault_path: "./tests/TestQuoteVault"
-std_log_path: "./tests/TestLogs/quote_vault_manager.log"
-err_log_path: "./tests/TestLogs/quote_vault_manager.err.log"
