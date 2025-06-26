@@ -4,6 +4,8 @@ __pycache__/
 *.pyo
 *.pyd
 
+quote_vault_manager/__pycache__/
+
 # Virtual environment
 dquote-mgr-env/
 quote-mgr-env/
