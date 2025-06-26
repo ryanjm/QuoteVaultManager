@@ -203,9 +203,9 @@ def process_delete_flags(destination_path: str, source_vault_path: str, dry_run:
                             # Extract source file from frontmatter
                             for line in frontmatter.split('\n'):
                                 if line.strip().startswith('source_path:'):
-                                    source_file = line.split('"')[1]
+                                    # Extract everything after 'source_path:' and strip whitespace/quotes
+                                    source_file = line.split('source_path:', 1)[1].strip().strip('"')
                                     source_file_path = os.path.join(source_vault_path, source_file)
-                                    
                                     # Extract block ID from filename
                                     filename = os.path.basename(quote_file_path)
                                     if ' - Quote' in filename:
@@ -213,12 +213,10 @@ def process_delete_flags(destination_path: str, source_vault_path: str, dry_run:
                                         if len(parts) >= 2:
                                             block_id_part = parts[1].split(' - ')[0]
                                             block_id = f"^Quote{block_id_part}"
-                                            
                                             # Unwrap the quote in source file
                                             unwrapped = unwrap_quote_in_source(source_file_path, block_id, dry_run)
                                             if unwrapped:
                                                 results['quotes_unwrapped'] += 1
-                                            
                                             # Delete the quote file
                                             delete_quote_file(quote_file_path, dry_run)
                                             break
