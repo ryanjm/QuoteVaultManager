@@ -1,5 +1,7 @@
 import tempfile
 import os
+import logging
+from quote_vault_manager.logger import setup_logging, log_sync_action, log_error
 from quote_vault_manager.sync import (
     has_sync_quotes_flag,
     get_markdown_files,
@@ -8,6 +10,34 @@ from quote_vault_manager.sync import (
     process_delete_flags,
     sync_vaults
 )
+
+def test_setup_logging_and_log_sync_action_and_log_error():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        std_log_path = os.path.join(temp_dir, "std.log")
+        err_log_path = os.path.join(temp_dir, "err.log")
+        config = {"std_log_path": std_log_path, "err_log_path": err_log_path}
+        std_logger, err_logger = setup_logging(config)
+
+        # Test log_sync_action
+        log_sync_action(std_logger, "TEST_ACTION", "Test details", dry_run=True)
+        with open(std_log_path, "r") as f:
+            log_content = f.read()
+            assert "==== SYNC ACTION" in log_content
+            assert "[DRY-RUN] TEST_ACTION: Test details" in log_content
+
+        # Test log_error
+        log_error(err_logger, "Test error", context="TestContext")
+        with open(err_log_path, "r") as f:
+            log_content = f.read()
+            assert "TestContext: Test error" in log_content
+
+        # Test log_error with no context
+        log_error(err_logger, "Error without context")
+        with open(err_log_path, "r") as f:
+            log_content = f.read()
+            assert "Error without context" in log_content
+
+        print("Logger setup and logging tests passed.")
 
 def test_has_sync_quotes_flag():
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -422,6 +452,7 @@ sync_quotes: true
         print("Unique block ID assignment tests passed.")
 
 if __name__ == "__main__":
+    test_setup_logging_and_log_sync_action_and_log_error()
     test_has_sync_quotes_flag()
     test_get_markdown_files()
     test_get_book_title_from_path()
