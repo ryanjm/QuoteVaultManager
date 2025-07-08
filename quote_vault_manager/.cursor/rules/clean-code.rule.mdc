@@ -1,0 +1,142 @@
+---
+description: When refactoring code
+alwaysApply: false
+---
+## ✅ Rule 2: Functions Do One Thing
+
+A function should **do one conceptually complete action**. If you can describe it with “and”, it does too much.
+
+```python
+# Bad
+def load_and_process_file(filepath):
+    with open(filepath) as f:
+        lines = f.readlines()
+    return [line.strip() for line in lines if line]
+
+# Good
+def load_file(filepath):
+    with open(filepath) as f:
+        return f.readlines()
+
+def process_lines(lines):
+    return [line.strip() for line in lines if line]
+```
+
+---
+
+## ✅ Rule 3: Name Things to Reveal Intent
+
+- Use **descriptive names**
+- Make names answer: *What does this do?*
+
+```go
+// Bad
+func d(u User) {
+    x := u.a
+}
+
+// Good
+func deleteUser(user User) {
+    accessLevel := user.accessLevel
+}
+```
+
+---
+
+## ✅ Rule 4: Code Should Read Like a Newspaper
+
+Top-level functions are **high-level summaries**; details go in helpers.
+
+```ts
+function renderTestPage(pageData, isSuite) {
+  if (isTestPage(pageData))
+    includeSetupsAndTeardowns(pageData, isSuite);
+  return pageData.html();
+}
+```
+
+---
+
+## ✅ Rule 5: Avoid Mixed Abstraction Levels
+
+Don’t mix business logic with low-level utilities in one function.
+
+```java
+// Bad
+public void payInvoice(Invoice invoice) {
+  double total = 0;
+  for (LineItem item : invoice.items()) {
+    total += item.amount();
+  }
+  if (total > 0) {
+    invoice.markPaid();
+  }
+}
+
+// Good
+public void payInvoice(Invoice invoice) {
+  double total = calculateTotal(invoice);
+  if (total > 0) {
+    invoice.markPaid();
+  }
+}
+
+private double calculateTotal(Invoice invoice) {
+  return invoice.items().stream()
+                .mapToDouble(LineItem::amount)
+                .sum();
+}
+```
+
+---
+
+## ✅ Rule 6: Use Polymorphism Over Conditionals
+
+```csharp
+// Bad
+if (shape.Type == "Circle") drawCircle(shape);
+else if (shape.Type == "Square") drawSquare(shape);
+
+// Good
+shape.draw();
+```
+
+---
+
+## ✅ Rule 7: Leave Code Cleaner Than You Found It
+
+If you touch messy code, improve clarity (naming, structure), even slightly.
+
+---
+
+## ✅ Rule 8: DRY – Don’t Repeat Yourself
+
+Move duplicate logic into a shared helper.
+
+---
+
+## ✅ Rule 9: Error Handling Should Not Obscure Logic
+
+Use exceptions (not return codes) and isolate error handling.
+
+---
+
+## ✅ Rule 10: Use Meaningful Booleans
+
+```js
+// Bad
+if (user.age > 65 && user.income < 20000) {
+
+// Good
+const isLowIncomeSenior = user.age > 65 && user.income < 20000;
+if (isLowIncomeSenior) {
+```
+
+---
+
+## 📌 Extras
+
+- Prefer **command-query separation**
+- Eliminate **side effects**
+- Strive for **testability**
+- **Refactor mercilessly**
