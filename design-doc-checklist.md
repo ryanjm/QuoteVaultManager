@@ -61,6 +61,13 @@
 - [x] Create CLI interface in `__main__.py`
 - [x] Parse flags and run main sync logic
 
+### New Features
+- [ ] Create a version number so that every time there is a new version of the script it can burn everything down and rebuild it
+- [ ] Check for edited quotes:
+  - [ ] In quotes vault, check frontmatter for edited status (edited: true)
+  - [ ] Update the source file with the update blockquote
+- [ ] Add an extra link in the quote files for Command URI's random URL link - [Random Note](obsidian://adv-uri?vault=ReferenceQuotes&commandid=random-note)
+
 ---
 
 > Tip: As you complete each item, mark it `[x]` to track progress.
