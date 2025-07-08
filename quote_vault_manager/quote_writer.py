@@ -2,6 +2,7 @@ import os
 from typing import Optional
 from urllib.parse import quote
 import re
+import yaml
 
 def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "Notes", vault_root: str = "") -> str:
     """
@@ -358,3 +359,22 @@ def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: 
         
     except Exception:
         return False 
+
+def frontmatter_str_to_dict(frontmatter: str) -> dict:
+    """
+    Converts a YAML frontmatter string to a Python dict.
+    Returns an empty dict if parsing fails.
+    """
+    try:
+        return yaml.safe_load(frontmatter) or {}
+    except Exception:
+        return {}
+
+def frontmatter_dict_to_str(frontmatter_dict: dict) -> str:
+    """
+    Converts a Python dict to a YAML frontmatter string.
+    """
+    try:
+        return yaml.safe_dump(frontmatter_dict, sort_keys=False).strip()
+    except Exception:
+        return "" 

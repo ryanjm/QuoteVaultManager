@@ -6,8 +6,12 @@ from .quote_parser import extract_blockquotes_with_ids, get_next_block_id, valid
 from .quote_writer import (
     write_quote_file, update_quote_file_if_changed, delete_quote_file,
     find_quote_files_for_source, has_delete_flag, unwrap_quote_in_source,
-    ensure_block_id_in_source, create_obsidian_uri
+    ensure_block_id_in_source, create_obsidian_uri,
+    frontmatter_str_to_dict, frontmatter_dict_to_str, read_quote_file_content
 )
+import importlib
+import glob
+from . import VERSION
 
 def has_sync_quotes_flag(file_path: str) -> bool:
     """
@@ -57,6 +61,31 @@ def get_book_title_from_path(file_path: str) -> str:
 def get_vault_name_from_path(vault_path: str) -> str:
     """Extracts the vault name (last folder) from a full vault path."""
     return os.path.basename(os.path.normpath(vault_path))
+
+def apply_transformations_to_quote_file(file_path: str, dry_run: bool = False) -> bool:
+    """
+    Applies all necessary transformations to a quote file and updates it if needed.
+    Returns True if the file was (or would be) updated, False otherwise.
+    """
+    frontmatter, content = read_quote_file_content(file_path)
+    if frontmatter is None:
+        return False
+    fm_dict = frontmatter_str_to_dict(frontmatter)
+    file_version = fm_dict.get('version', 'V0.0')
+    updated = False
+    # Only V0.1 for now, but this will scale
+    if file_version != VERSION:
+        from quote_vault_manager.transformations import v0_1_add_version
+        note = {'frontmatter': fm_dict}
+        note = v0_1_add_version.transform(note)
+        note['frontmatter']['version'] = VERSION
+        new_frontmatter = frontmatter_dict_to_str(note['frontmatter'])
+        if new_frontmatter != frontmatter:
+            if not dry_run:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(f"---\n{new_frontmatter}\n---\n\n{content}")
+            updated = True
+    return updated
 
 def sync_source_file(source_file: str, 
     destination_path: str, 
@@ -196,7 +225,6 @@ def process_delete_flags(destination_path: str, source_vault_path: str, dry_run:
                 if has_delete_flag(quote_file_path):
                     try:
                         # Read the quote file to get source file and block ID
-                        from .quote_writer import read_quote_file_content
                         frontmatter, _ = read_quote_file_content(quote_file_path)
                         if frontmatter:
                             # Extract source file from frontmatter
@@ -257,6 +285,18 @@ def sync_vaults(config: Dict[str, str], dry_run: bool = False) -> Dict[str, Any]
     source_vault_path = config['source_vault_path']
     destination_vault_path = config['destination_vault_path']
     
+    # Step 0: Apply transformations to all quote files before sync
+    quote_files = glob.glob(os.path.join(destination_vault_path, '**', '*.md'), recursive=True)
+    files_updated = 0
+    for file_path in quote_files:
+        if apply_transformations_to_quote_file(file_path, dry_run=dry_run):
+            files_updated += 1
+    if files_updated:
+        if dry_run:
+            print(f"🔄 [DRY-RUN] {files_updated} quote files would be updated to version {VERSION}")
+        else:
+            print(f"🔄 {files_updated} quote files updated to version {VERSION}")
+
     # Step 1: Process delete flags first
     delete_results = process_delete_flags(destination_vault_path, source_vault_path, dry_run)
     results['total_quotes_unwrapped'] = delete_results['quotes_unwrapped']
