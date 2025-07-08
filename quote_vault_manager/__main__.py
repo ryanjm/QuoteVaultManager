@@ -3,6 +3,7 @@ import sys
 from quote_vault_manager.config import load_config, ConfigError
 from quote_vault_manager.sync import sync_vaults
 from quote_vault_manager.logger import setup_logging, log_sync_action, log_error
+from . import VERSION
 
 def main():
     parser = argparse.ArgumentParser(
