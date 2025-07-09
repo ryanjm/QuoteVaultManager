@@ -48,65 +48,34 @@ def _process_single_delete_flag(
     results: Dict[str, Any]
 ) -> None:
     """Helper function to process a single quote file with delete flag."""
-    frontmatter, _ = read_quote_file_content(quote_file_path)
+    from .models.destination_file import DestinationFile
+    from .models.source_file import SourceFile
+    # Read the quote file using DestinationFile
+    dest = DestinationFile.from_file(quote_file_path)
+    frontmatter = dest.frontmatter
     if not frontmatter:
         return
-    
     # Extract source file from frontmatter
-    source_file = _extract_source_file_from_frontmatter(frontmatter)
+    source_file = frontmatter.get('source_path')
     if not source_file:
         return
-    
-    source_file_path = _find_source_file_path(source_file, source_vault_path)
-    if not source_file_path:
+    import os
+    source_file_path = os.path.join(source_vault_path, source_file) if source_vault_path else source_file
+    if not os.path.exists(source_file_path):
         error_msg = f"Could not find source file {source_file} in {source_vault_path} for quote file {quote_file_path}"
         print(f"  ERROR: {error_msg}")
         results['errors'].append(error_msg)
         return
-    
-    # Extract block ID from filename
-    block_id = _extract_block_id_from_filename(quote_file_path)
+    # Extract block ID from frontmatter
+    block_id = frontmatter.get('block_id')
     if not block_id:
         return
-    
-    # Unwrap the quote in source file
-    unwrapped = unwrap_quote_in_source(source_file_path, block_id, dry_run)
-    if unwrapped:
+    # Remove the quote from the source file
+    source = SourceFile.from_file(source_file_path)
+    removed = source.remove_quote(block_id)
+    if removed and not dry_run:
+        source.save()
         results['quotes_unwrapped'] += 1
-    
     # Delete the quote file
-    delete_quote_file(quote_file_path, dry_run)
-
-
-def _extract_source_file_from_frontmatter(frontmatter: str) -> str:
-    """Extract source file path from frontmatter string."""
-    for line in frontmatter.split('\n'):
-        if line.strip().startswith('source_path:'):
-            return line.split('source_path:', 1)[1].strip().strip('"')
-    return ""
-
-
-def _find_source_file_path(source_file: str, source_vault_path: str) -> str:
-    """Find the full path to a source file within the vault."""
-    source_file_path = os.path.join(source_vault_path, source_file)
-    
-    if os.path.exists(source_file_path):
-        return source_file_path
-    
-    # Recursively search for the file in the source vault
-    for root_dir, _, files_in_dir in os.walk(source_vault_path):
-        if source_file in files_in_dir:
-            return os.path.join(root_dir, source_file)
-    
-    return ""
-
-
-def _extract_block_id_from_filename(quote_file_path: str) -> str:
-    """Extract block ID from quote filename."""
-    filename = os.path.basename(quote_file_path)
-    if ' - Quote' in filename:
-        parts = filename.split(' - Quote')
-        if len(parts) >= 2:
-            block_id_part = parts[1].split(' - ')[0]
-            return f"^Quote{block_id_part}"
-    return "" 
+    if not dry_run:
+        DestinationFile.delete(quote_file_path) 

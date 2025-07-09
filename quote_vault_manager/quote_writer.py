@@ -121,6 +121,7 @@ def extract_quote_text_from_content(content: Optional[str]) -> Optional[str]:
             break
     return '\n'.join(quote_lines) if quote_lines else None
 
+# DEPRECATED: Use DestinationFile/SourceFile methods instead.
 def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_file: str, 
                                 block_id: str, dry_run: bool = False, vault_name: str = "Notes", vault_root: str = "") -> bool:
     """Updates a quote file if the quote content has changed. Preserves existing frontmatter."""
@@ -148,6 +149,7 @@ def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_fil
     
     return False
 
+# DEPRECATED: Use DestinationFile/SourceFile methods instead.
 def write_quote_file(destination_path: str, book_title: str, block_id: str, 
                     quote_text: str, source_file: str, dry_run: bool = False, vault_name: str = "Notes", vault_root: str = "") -> str:
     """Creates a quote file in the destination directory."""
@@ -167,6 +169,7 @@ def write_quote_file(destination_path: str, book_title: str, block_id: str,
     
     return file_path
 
+# DEPRECATED: Use DestinationFile/SourceFile methods instead.
 def delete_quote_file(file_path: str, dry_run: bool = False) -> bool:
     """Deletes a quote file."""
     if not os.path.exists(file_path):
@@ -307,6 +310,7 @@ def _process_blockquote_for_id_assignment(lines: list[str], i: int, target_quote
             i += 1
         return original_lines, i, False
 
+# DEPRECATED: Use DestinationFile/SourceFile methods instead.
 def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: str, dry_run: bool = False) -> bool:
     """Ensures that a quote in the source file has the specified block ID."""
     if not os.path.exists(source_file_path):
@@ -365,6 +369,7 @@ def _replace_blockquote(lines, start, end, new_quote_text, block_id):
     formatted_new = _format_quote_text(new_quote_text).split('\n')
     return lines[:start] + formatted_new + [block_id] + lines[end+1:]
 
+# DEPRECATED: Use DestinationFile/SourceFile methods instead.
 def overwrite_quote_in_source(source_file_path: str, block_id: str, new_quote_text: str, dry_run: bool = False) -> bool:
     """Overwrite a quote in the source file (by block ID) with new text, preserving blockquote formatting and block ID."""
     if not os.path.exists(source_file_path):

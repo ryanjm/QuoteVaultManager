@@ -19,4 +19,24 @@ class DestinationFile:
         quote_text = extract_quote_text_from_content(content)
         block_id = frontmatter.get('block_id') if isinstance(frontmatter.get('block_id'), str) else None
         quote = Quote(quote_text, block_id)
-        return cls(frontmatter, quote) 
+        return cls(frontmatter, quote)
+
+    def save(self, path: str):
+        """Saves the current frontmatter and quote to the file at the given path."""
+        from quote_vault_manager.quote_writer import frontmatter_dict_to_str
+        frontmatter_str = frontmatter_dict_to_str(self.frontmatter)
+        quote_text = self.quote.text or ''
+        # Format quote as blockquote
+        quote_lines = [f'> {line}' for line in quote_text.split('\n') if line.strip()]
+        if self.quote.block_id:
+            quote_lines.append(self.quote.block_id)
+        content = f"---\n{frontmatter_str}\n---\n\n" + '\n'.join(quote_lines) + '\n'
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+    @staticmethod
+    def delete(path: str):
+        """Deletes the destination file at the given path."""
+        import os
+        if os.path.exists(path):
+            os.remove(path) 

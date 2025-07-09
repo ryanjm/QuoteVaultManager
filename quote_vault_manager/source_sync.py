@@ -11,6 +11,7 @@ from .quote_writer import (
 )
 from .file_utils import get_book_title_from_path, get_vault_name_from_path
 from .models.source_file import SourceFile
+from .models.destination_file import DestinationFile, Quote
 
 def sync_source_file(
     source_file: str, 
@@ -106,16 +107,32 @@ def get_edited_quote_info(file_path: str, filename: str) -> tuple:
 
 def process_edited_quote(file_path: str, source_path: str, block_id: str, new_quote_text: str, fm: dict, dry_run: bool, source_vault_path: str) -> bool:
     """Overwrite quote in source file and update frontmatter if needed."""
-    from .quote_writer import overwrite_quote_in_source
+    from .models.source_file import SourceFile
+    from .models.destination_file import DestinationFile
     if not (source_path and block_id and new_quote_text):
         return False
+    # Build full path to source file
     source_file_path = _build_source_file_path(source_path, source_vault_path)
     if not isinstance(source_file_path, str) or not source_file_path:
         return False
-    updated = overwrite_quote_in_source(source_file_path, block_id, new_quote_text, dry_run)
+    # Update the quote in the source file using SourceFile
+    source = SourceFile.from_file(source_file_path)
+    updated = source.update_quote(block_id, new_quote_text)
     if updated and not dry_run:
-        fm['edited'] = False
-        _update_quote_file_frontmatter(file_path, fm)
+        source.save()
+        # Update the frontmatter in the destination file using DestinationFile
+        dest = DestinationFile.from_file(file_path)
+        dest.frontmatter['edited'] = False
+        # Save the updated frontmatter (overwrite file)
+        from quote_vault_manager.quote_writer import frontmatter_dict_to_str
+        new_frontmatter = frontmatter_dict_to_str(dest.frontmatter)
+        with open(file_path, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+        parts = file_content.split('---', 2)
+        if len(parts) >= 3:
+            new_content = f"---\n{new_frontmatter}\n---\n{parts[2]}"
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
     return updated
 
 def sync_edited_quotes(destination_path: str, dry_run: bool = False, vault_name: str = "Notes", source_vault_path: str = None) -> int:
@@ -199,6 +216,7 @@ def _sync_quote_files(
     source_file, destination_path, quotes_with_ids, block_id_map, dry_run, vault_name, source_vault_path, results
 ):
     """Create or update quote files for all quotes in the source file."""
+    from .models.destination_file import DestinationFile
     book_title = get_book_title_from_path(source_file)
     for idx, (quote_text, block_id) in enumerate(quotes_with_ids):
         results['quotes_processed'] += 1
@@ -208,21 +226,34 @@ def _sync_quote_files(
         filename = create_quote_filename(book_title, block_id, quote_text)
         quote_file_path = os.path.join(destination_path, book_title, filename)
         if os.path.exists(quote_file_path):
-            updated = update_quote_file_if_changed(
-                quote_file_path, quote_text, source_file, block_id, 
-                dry_run, vault_name, source_vault_path or ""
-            )
-            if updated:
+            dest = DestinationFile.from_file(quote_file_path)
+            updated = False
+            if dest.quote.text != quote_text:
+                dest.quote.text = quote_text
+                updated = True
+            if dest.quote.block_id != block_id:
+                dest.quote.block_id = block_id
+                updated = True
+            if updated and not dry_run:
+                dest.save(quote_file_path)
                 results['quotes_updated'] += 1
         else:
-            write_quote_file(
-                destination_path, book_title, block_id, quote_text, 
-                source_file, dry_run, vault_name, source_vault_path or ""
-            )
+            # Create new DestinationFile and save
+            from quote_vault_manager.quote_writer import frontmatter_dict_to_str
+            frontmatter = {
+                'source_path': os.path.relpath(source_file, source_vault_path or "") if source_vault_path else source_file,
+                'block_id': block_id,
+                'vault': vault_name
+            }
+            dest = DestinationFile(frontmatter, Quote(quote_text, block_id))
+            if not dry_run:
+                os.makedirs(os.path.dirname(quote_file_path), exist_ok=True)
+                dest.save(quote_file_path)
             results['quotes_created'] += 1
 
 def _remove_orphaned_quote_files(source_file, destination_path, block_id_map, dry_run, results):
     """Remove quote files that no longer have a corresponding blockquote in the source file."""
+    from .models.destination_file import DestinationFile
     existing_block_ids = set(block_id_map.values())
     existing_quote_files = find_quote_files_for_source(destination_path, source_file)
     for quote_file in existing_quote_files:
@@ -234,4 +265,5 @@ def _remove_orphaned_quote_files(source_file, destination_path, block_id_map, dr
                 block_id = f"^Quote{block_id_part}"
                 if block_id not in existing_block_ids:
                     results['quotes_deleted'] = results.get('quotes_deleted', 0) + 1
-                    delete_quote_file(quote_file, dry_run) 
+                    if not dry_run:
+                        DestinationFile.delete(quote_file) 
