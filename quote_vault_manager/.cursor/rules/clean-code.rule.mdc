@@ -1,7 +1,39 @@
 ---
-description: When refactoring code
-alwaysApply: false
+alwaysApply: true
 ---
+## ✅ Rule 1: Functions Should Be Small
+	-	Limit functions to ~5–20 lines
+	-	Extract logic into helpers instead of nesting deeply
+
+Bad:
+
+```
+function processOrder(order) {
+  if (order.status === 'new') {
+    // validate
+    if (!order.items.length) {
+      throw new Error("No items");
+    }
+    // persist
+    db.save(order);
+    // notify
+    email.send(order.user.email, "Order confirmed");
+  }
+}
+```
+
+Good:
+
+```
+function processOrder(order) {
+  if (isNewOrder(order)) {
+    validateOrder(order);
+    saveOrder(order);
+    notifyUser(order);
+  }
+}
+```
+
 ## ✅ Rule 2: Functions Do One Thing
 
 A function should **do one conceptually complete action**. If you can describe it with “and”, it does too much.
