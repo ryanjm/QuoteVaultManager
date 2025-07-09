@@ -44,6 +44,88 @@ def sync_source_file(
     _remove_orphaned_quote_files(source_file, destination_path, block_id_map, dry_run, results)
     return results
 
+def _extract_block_id_from_filename(filename: str) -> str:
+    """Extract block ID from filename if possible."""
+    if ' - Quote' in filename:
+        parts = filename.split(' - Quote')
+        if len(parts) >= 2:
+            block_id_part = parts[1].split(' - ')[0]
+            return f"^Quote{block_id_part}"
+    return ""
+
+def _build_source_file_path(source_path: Optional[str], source_vault_path: Optional[str]) -> Optional[str]:
+    """Build full path to source file."""
+    if not isinstance(source_path, str) or not source_path:
+        return None
+    if source_vault_path and isinstance(source_vault_path, str):
+        return os.path.join(source_vault_path, source_path)
+    return source_path
+
+def _update_quote_file_frontmatter(file_path: str, frontmatter_dict: dict) -> None:
+    """Update the frontmatter in a quote file."""
+    from .quote_writer import frontmatter_dict_to_str
+    new_frontmatter = frontmatter_dict_to_str(frontmatter_dict)
+    with open(file_path, 'r', encoding='utf-8') as f:
+        file_content = f.read()
+    parts = file_content.split('---', 2)
+    if len(parts) >= 3:
+        new_content = f"---\n{new_frontmatter}\n---\n{parts[2]}"
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+
+def is_edited_quote_file(file_path: str) -> bool:
+    """Return True if file is a markdown file with edited: true in frontmatter."""
+    if not file_path.endswith('.md'):
+        return False
+    from .quote_writer import read_quote_file_content, frontmatter_str_to_dict
+    frontmatter, _ = read_quote_file_content(file_path)
+    if not frontmatter:
+        return False
+    fm = frontmatter_str_to_dict(frontmatter)
+    return fm.get('edited') is True
+
+def get_edited_quote_info(file_path: str, filename: str) -> tuple:
+    """Extract source_path, block_id, new_quote_text, and frontmatter dict from file."""
+    from .quote_writer import read_quote_file_content, frontmatter_str_to_dict, extract_quote_text_from_content
+    frontmatter, content = read_quote_file_content(file_path)
+    fm = frontmatter_str_to_dict(frontmatter) if frontmatter else {}
+    source_path = fm.get('source_path') if isinstance(fm.get('source_path'), str) else None
+    block_id = fm.get('block_id') if isinstance(fm.get('block_id'), str) else None
+    if not block_id:
+        block_id = _extract_block_id_from_filename(filename)
+    new_quote_text = extract_quote_text_from_content(content or "")
+    return source_path, block_id, new_quote_text, fm
+
+def process_edited_quote(file_path: str, source_path: str, block_id: str, new_quote_text: str, fm: dict, dry_run: bool, source_vault_path: str) -> bool:
+    """Overwrite quote in source file and update frontmatter if needed."""
+    from .quote_writer import overwrite_quote_in_source
+    if not (source_path and block_id and new_quote_text):
+        return False
+    source_file_path = _build_source_file_path(source_path, source_vault_path)
+    if not isinstance(source_file_path, str) or not source_file_path:
+        return False
+    updated = overwrite_quote_in_source(source_file_path, block_id, new_quote_text, dry_run)
+    if updated and not dry_run:
+        fm['edited'] = False
+        _update_quote_file_frontmatter(file_path, fm)
+    return updated
+
+def sync_edited_quotes(destination_path: str, dry_run: bool = False, vault_name: str = "Notes", source_vault_path: str = None) -> int:
+    """Sync edited quotes back to source files."""
+    if not isinstance(destination_path, str) or not destination_path:
+        return 0
+    updated_count = 0
+    dest_path_str: str = str(destination_path)
+    for root, dirs, files in os.walk(dest_path_str):
+        for file in files:
+            file_path = os.path.join(root, file)
+            if not is_edited_quote_file(file_path):
+                continue
+            source_path, block_id, new_quote_text, fm = get_edited_quote_info(file_path, file)
+            if process_edited_quote(file_path, source_path, block_id, new_quote_text, fm, dry_run, source_vault_path or ""):
+                updated_count += 1
+    return updated_count
+
 def _init_results(source_file: str) -> Dict[str, Any]:
     """Initialize the results dictionary for sync operations."""
     return {

@@ -342,6 +342,48 @@ def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: 
     except Exception:
         return False
 
+def overwrite_quote_in_source(source_file_path: str, block_id: str, new_quote_text: str, dry_run: bool = False) -> bool:
+    """Overwrite a quote in the source file (by block ID) with new text, preserving blockquote formatting and block ID."""
+    if not os.path.exists(source_file_path):
+        return False
+    try:
+        with open(source_file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        lines = content.splitlines()
+        modified = False
+        new_lines = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            if _is_blockquote_line(line):
+                quote_start = i
+                quote_lines = []
+                # Collect all consecutive blockquote lines
+                while i < len(lines) and _is_blockquote_line(lines[i]):
+                    quote_lines.append(lines[i])
+                    i += 1
+                # Check if the next line is the block ID we're looking for
+                if i < len(lines) and lines[i].strip() == block_id:
+                    # Overwrite this quote
+                    formatted_new = _format_quote_text(new_quote_text).split('\n')
+                    new_lines.extend(formatted_new)
+                    new_lines.append(block_id)
+                    i += 1  # Skip the block ID line
+                    modified = True
+                else:
+                    # Not the right quote, keep original lines
+                    for j in range(quote_start, i):
+                        new_lines.append(lines[j])
+            else:
+                new_lines.append(line)
+                i += 1
+        if modified and not dry_run:
+            with open(source_file_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(new_lines))
+        return modified
+    except Exception:
+        return False
+
 def frontmatter_str_to_dict(frontmatter: str) -> dict:
     """Converts a YAML frontmatter string to a Python dict."""
     try:
