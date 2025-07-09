@@ -3,12 +3,13 @@ from typing import Dict, Any
 
 class DestinationFile:
     """Represents a destination file with frontmatter and a single quote."""
-    def __init__(self, frontmatter: Dict[str, Any], quote: Quote):
+    def __init__(self, frontmatter: Dict[str, Any], quote: Quote, path: str = None):
         self.frontmatter = frontmatter
         self.quote = quote
+        self.path = path
 
     def __repr__(self):
-        return f"DestinationFile(frontmatter={self.frontmatter!r}, quote={self.quote!r})"
+        return f"DestinationFile(frontmatter={self.frontmatter!r}, quote={self.quote!r}, path={self.path!r})"
 
     @classmethod
     def from_file(cls, path: str) -> 'DestinationFile':
@@ -19,7 +20,7 @@ class DestinationFile:
         quote_text = extract_quote_text_from_content(content)
         block_id = frontmatter.get('block_id') if isinstance(frontmatter.get('block_id'), str) else None
         quote = Quote(quote_text, block_id)
-        return cls(frontmatter, quote)
+        return cls(frontmatter, quote, path=path)
 
     def save(self, path: str):
         """Saves the current frontmatter and quote to the file at the given path."""
