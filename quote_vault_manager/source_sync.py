@@ -10,6 +10,7 @@ from .quote_writer import (
     find_quote_files_for_source, ensure_block_id_in_source, create_quote_filename
 )
 from .file_utils import get_book_title_from_path, get_vault_name_from_path
+from .models.source_file import SourceFile
 
 def sync_source_file(
     source_file: str, 
@@ -24,24 +25,31 @@ def sync_source_file(
     results = _init_results(source_file)
     vault_name = get_vault_name_from_path(source_vault_path) if source_vault_path else "Notes"
 
-    content: Optional[str] = _read_and_validate_source_file(source_file, results)
-    if not content:
+    # Use SourceFile object for all operations
+    source = SourceFile.from_file(source_file)
+    errors = source.validate_block_ids()
+    if errors:
+        results['errors'].extend(errors)
         return results
-    quotes_with_ids = extract_blockquotes_with_ids(content)
-    block_id_map, next_block_num = _collect_block_ids(quotes_with_ids)
 
-    # Assign missing block IDs and update source file if needed
-    quotes_with_ids, block_ids_added = _assign_missing_block_ids(source_file, quotes_with_ids, block_id_map, next_block_num, dry_run, results)
+    block_ids_added = source.assign_missing_block_ids()
+    results['block_ids_added'] += block_ids_added
     if block_ids_added and not dry_run:
-        # Re-read content and quotes if any block IDs were added (only in non-dry-run mode)
-        content = _read_and_validate_source_file(source_file, results)
-        quotes_with_ids = extract_blockquotes_with_ids(content)
-        block_id_map, _ = _collect_block_ids(quotes_with_ids)
+        source = SourceFile.from_file(source_file)  # Reload to get updated block IDs
+
+    # Prepare quotes_with_ids for downstream logic
+    quotes_with_ids = [(q.text, q.block_id) for q in source.quotes]
+    block_id_map = {i: q.block_id for i, q in enumerate(source.quotes) if q.block_id}
 
     _sync_quote_files(
         source_file, destination_path, quotes_with_ids, block_id_map, dry_run, vault_name, source_vault_path, results
     )
     _remove_orphaned_quote_files(source_file, destination_path, block_id_map, dry_run, results)
+
+    # Save any changes to the source file (quotes, block IDs)
+    if block_ids_added and not dry_run:
+        source.save()
+
     return results
 
 def _extract_block_id_from_filename(filename: str) -> str:
