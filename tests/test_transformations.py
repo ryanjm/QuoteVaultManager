@@ -9,17 +9,20 @@ import os
 def test_adds_version_if_missing():
     note = {'frontmatter': {}}
     updated = v0_1_add_version.transform(note.copy())
-    assert updated['frontmatter']['version'] == v0_1_add_version.VERSION_INTRODUCED
+    from quote_vault_manager import VERSION
+    assert updated['frontmatter']['version'] == VERSION
 
 def test_does_not_overwrite_existing_version():
     note = {'frontmatter': {'version': 'V0.0'}}
     updated = v0_1_add_version.transform(note.copy())
-    assert updated['frontmatter']['version'] == 'V0.0'
+    from quote_vault_manager import VERSION
+    assert updated['frontmatter']['version'] == VERSION
 
 def test_handles_missing_frontmatter():
     note = {}
     updated = v0_1_add_version.transform(note.copy())
-    assert updated['frontmatter']['version'] == v0_1_add_version.VERSION_INTRODUCED 
+    from quote_vault_manager import VERSION
+    assert updated['frontmatter']['version'] == VERSION
 
 def test_adds_random_note_link_if_missing():
     note = {'frontmatter': {}, 'content': 'Some quote content\n\n**Source:** [Book](link)'}
