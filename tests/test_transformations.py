@@ -1,6 +1,7 @@
 import pytest
 from quote_vault_manager.transformations import v0_1_add_version
 from quote_vault_manager.transformations import v0_2_add_random_note_link
+from quote_vault_manager.transformations import v0_3_add_edited_flag
 from quote_vault_manager.transformation_manager import apply_transformations_to_quote_file
 from quote_vault_manager import VERSION
 import tempfile
@@ -37,6 +38,20 @@ def test_does_not_duplicate_random_note_link():
     updated = v0_2_add_random_note_link.transform(note.copy())
     # Should only be one instance of the link
     assert updated['content'].count(v0_2_add_random_note_link.RANDOM_NOTE_LINK) == 1
+
+def test_adds_edited_flag_if_missing():
+    note = {'frontmatter': {}}
+    updated = v0_3_add_edited_flag.transform(note.copy())
+    from quote_vault_manager import VERSION
+    assert updated['frontmatter']['edited'] is False
+    assert updated['frontmatter']['version'] == VERSION
+
+def test_does_not_overwrite_existing_edited_flag():
+    note = {'frontmatter': {'edited': True}}
+    updated = v0_3_add_edited_flag.transform(note.copy())
+    from quote_vault_manager import VERSION
+    assert updated['frontmatter']['edited'] is True
+    assert updated['frontmatter']['version'] == VERSION
 
 def test_transformation_manager_updates_version_to_latest():
     """Test that transformation manager updates version to latest after applying transformations."""

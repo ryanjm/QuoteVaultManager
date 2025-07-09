@@ -37,7 +37,11 @@ def apply_transformations_to_quote_file(file_path: str, dry_run: bool = False) -
     if file_version < 'V0.2':
         from .transformations import v0_2_add_random_note_link
         note = v0_2_add_random_note_link.transform(note)
-    
+
+    if file_version < 'V0.3':
+        from .transformations import v0_3_add_edited_flag
+        note = v0_3_add_edited_flag.transform(note)
+
     new_frontmatter = frontmatter_dict_to_str(note['frontmatter'])
     
     if new_frontmatter != frontmatter or note['content'] != content:

@@ -172,6 +172,7 @@ version: "V0.0"
         assert os.path.exists(backup_file)
         
         # Original file should be updated
+        from quote_vault_manager import VERSION
         with open(quote_file, 'r') as f:
             content = f.read()
-        assert 'version: V0.2' in content or 'version: "V0.2"' in content 
+        assert f'version: {VERSION}' in content or f'version: "{VERSION}"' in content 
