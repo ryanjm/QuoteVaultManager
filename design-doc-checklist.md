@@ -71,8 +71,8 @@
   - [x] After all transformations for a version, update the note’s version in frontmatter.
   - [x] Notify the user (stdout and logs) of how many files were updated.
   - [x] Each transformation lives in its own file under `quote_vault_manager/transformations/`, tagged with the version it was introduced in.
-  - [ ] There should be a separate transformation for updating the version number in the note.
-  - [ ] Before destructive changes, create a backup in `.backup/VERSION-DATE/` in the quote vault, and delete backups older than a week.
+  - [x] There should be a separate transformation for updating the version number in the note.
+  - [x] Before destructive changes, create a backup in `.backup/VERSION-DATE/` in the quote vault, and delete backups older than a week.
 
 - [x] Create a transformation file for `V0.2` to update notes to include a new link at the bottom of the page (there should be a blank line between the link back to the original vault and this one)
   - [x] The link will use Command URI's random URL link: [Random Note](obsidian://adv-uri?vault=ReferenceQuotes&commandid=random-note). It will be the same link for all notes.
