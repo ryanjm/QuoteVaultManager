@@ -2,14 +2,14 @@ import tempfile
 import os
 import logging
 from quote_vault_manager.logger import setup_logging, log_sync_action, log_error
-from quote_vault_manager.sync import (
+from quote_vault_manager.sync import sync_vaults
+from quote_vault_manager.file_utils import (
     has_sync_quotes_flag,
     get_markdown_files,
-    get_book_title_from_path,
-    sync_source_file,
-    process_delete_flags,
-    sync_vaults
+    get_book_title_from_path
 )
+from quote_vault_manager.source_sync import sync_source_file
+from quote_vault_manager.delete_processor import process_delete_flags
 
 def test_setup_logging_and_log_sync_action_and_log_error():
     with tempfile.TemporaryDirectory() as temp_dir:
