@@ -1,6 +1,8 @@
+from typing import Optional
+
 class Quote:
     """Represents a quote with text and block_id."""
-    def __init__(self, text: str, block_id: str):
+    def __init__(self, text: Optional[str], block_id: Optional[str]):
         self.text = text
         self.block_id = block_id
 
