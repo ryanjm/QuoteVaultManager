@@ -108,8 +108,10 @@ def read_quote_file_content(file_path: str) -> tuple[Optional[str], Optional[str
     except Exception:
         return None, None
 
-def extract_quote_text_from_content(content: str) -> Optional[str]:
+def extract_quote_text_from_content(content: Optional[str]) -> Optional[str]:
     """Extracts the actual quote text from quote file content (removes > prefix)."""
+    if content is None:
+        return None
     lines = content.split('\n')
     quote_lines = []
     for line in lines:
@@ -342,6 +344,27 @@ def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: 
     except Exception:
         return False
 
+def _find_blockquote_with_id(lines, block_id):
+    """Find the start/end indices of the blockquote with the given block_id."""
+    i = 0
+    while i < len(lines):
+        if _is_blockquote_line(lines[i]):
+            start = i
+            # Collect all consecutive blockquote lines
+            while i < len(lines) and _is_blockquote_line(lines[i]):
+                i += 1
+            # Check if the next line is the block ID
+            if i < len(lines) and lines[i].strip() == block_id:
+                end = i  # end is index of block_id line
+                return start, end
+        i += 1
+    return None, None
+
+def _replace_blockquote(lines, start, end, new_quote_text, block_id):
+    """Replace lines[start:end+1] with new blockquote and block_id."""
+    formatted_new = _format_quote_text(new_quote_text).split('\n')
+    return lines[:start] + formatted_new + [block_id] + lines[end+1:]
+
 def overwrite_quote_in_source(source_file_path: str, block_id: str, new_quote_text: str, dry_run: bool = False) -> bool:
     """Overwrite a quote in the source file (by block ID) with new text, preserving blockquote formatting and block ID."""
     if not os.path.exists(source_file_path):
@@ -350,37 +373,20 @@ def overwrite_quote_in_source(source_file_path: str, block_id: str, new_quote_te
         with open(source_file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         lines = content.splitlines()
-        modified = False
-        new_lines = []
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            if _is_blockquote_line(line):
-                quote_start = i
-                quote_lines = []
-                # Collect all consecutive blockquote lines
-                while i < len(lines) and _is_blockquote_line(lines[i]):
-                    quote_lines.append(lines[i])
-                    i += 1
-                # Check if the next line is the block ID we're looking for
-                if i < len(lines) and lines[i].strip() == block_id:
-                    # Overwrite this quote
-                    formatted_new = _format_quote_text(new_quote_text).split('\n')
-                    new_lines.extend(formatted_new)
-                    new_lines.append(block_id)
-                    i += 1  # Skip the block ID line
-                    modified = True
-                else:
-                    # Not the right quote, keep original lines
-                    for j in range(quote_start, i):
-                        new_lines.append(lines[j])
-            else:
-                new_lines.append(line)
-                i += 1
-        if modified and not dry_run:
+        start, end = _find_blockquote_with_id(lines, block_id)
+        if start is None or end is None:
+            return False
+        # Prepare new blockquote section
+        formatted_new = _format_quote_text(new_quote_text).split('\n')
+        old_blockquote = lines[start:end]
+        new_blockquote = formatted_new
+        if old_blockquote == new_blockquote:
+            return False
+        new_lines = lines[:start] + new_blockquote + [block_id] + lines[end+1:]
+        if not dry_run:
             with open(source_file_path, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(new_lines))
-        return modified
+        return True
     except Exception:
         return False
 

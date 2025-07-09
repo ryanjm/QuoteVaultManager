@@ -78,12 +78,12 @@
   - [x] The link will use Command URI's random URL link: [Random Note](obsidian://adv-uri?vault=ReferenceQuotes&commandid=random-note). It will be the same link for all notes.
   - [x] Increment version of the script to `V0.2` so that this patch will be applied.
 
-- [ ] Support editing quotes
-  - [ ] Create a transformation file for `V0.3` to add `edited: false` to the quote's frontmatter.
-  - [ ] As part of the sync, check for edited quotes:
-    - [ ] In quotes vault, check frontmatter for edited status (`edited: true`)
-    - [ ] Overwrite the original blockquote in the source file with the updated quote.
-  - [ ] Increment version of the script to `V0.3`.
+- [x] Support editing quotes
+  - [x] Create a transformation file for `V0.3` to add `edited: false` to the quote's frontmatter.
+  - [x] As part of the sync, check for edited quotes:
+    - [x] In quotes vault, check frontmatter for edited status (`edited: true`)
+    - [x] Overwrite the original blockquote in the source file with the updated quote.
+  - [x] Increment version of the script to `V0.3`.
 
 
 > Tip: As you complete each item, mark it `[x]` to track progress.

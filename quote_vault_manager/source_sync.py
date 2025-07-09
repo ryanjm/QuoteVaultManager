@@ -91,7 +91,9 @@ def get_edited_quote_info(file_path: str, filename: str) -> tuple:
     fm = frontmatter_str_to_dict(frontmatter) if frontmatter else {}
     source_path = fm.get('source_path') if isinstance(fm.get('source_path'), str) else None
     block_id = _extract_block_id_from_filename(filename)
-    new_quote_text = extract_quote_text_from_content(content or "")
+    # Guarantee content_str is always a string
+    content_str = str(content or "")
+    new_quote_text = extract_quote_text_from_content(content_str)
     return source_path, block_id, new_quote_text, fm
 
 def process_edited_quote(file_path: str, source_path: str, block_id: str, new_quote_text: str, fm: dict, dry_run: bool, source_vault_path: str) -> bool:

@@ -1,5 +1,6 @@
 ---
-alwaysApply: true
+description: When refactoring
+alwaysApply: false
 ---
 ## ✅ Rule 1: Functions Should Be Small
 	-	Limit functions to ~5–20 lines

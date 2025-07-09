@@ -12,7 +12,10 @@ def make_source_file(tmp_path, content, name="Book.md"):
 def make_quote_file(tmp_path, frontmatter, quote_text, name="Book - Quote001 - Test.md"):
     qf = tmp_path / name
     fm_str = frontmatter_dict_to_str(frontmatter)
-    qf.write_text(f"---\n{fm_str}\n---\n> {quote_text}\n\n**Source:** [Book](obsidian://open?vault=Notes&file=Book%23^Quote001)", encoding="utf-8")
+    # Prefix every line of quote_text with '>'
+    quote_lines = quote_text.split('\n')
+    formatted_quote = '\n'.join(f'> {line}' for line in quote_lines)
+    qf.write_text(f"---\n{fm_str}\n---\n{formatted_quote}\n\n**Source:** [Book](obsidian://open?vault=Notes&file=Book%23^Quote001)", encoding="utf-8")
     return str(qf)
 
 def read_file(path):
@@ -76,4 +79,45 @@ def test_dry_run_does_not_modify_files(tmp_path):
     assert read_file(src_path) == orig
     # Quote file edited flag not reset
     assert "edited: true" in read_file(quote_path)
+    assert updated == 1 
+
+def test_edit_single_line_to_multiline(tmp_path):
+    # Setup source file with original single-line quote
+    orig = "> Old quote\n^Quote001\nOther text"
+    src_path = make_source_file(tmp_path, orig)
+    # Setup quote file with edited: true and multiline new quote
+    qvault = tmp_path / "vault"
+    qvault.mkdir()
+    frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
+    quote_path = make_quote_file(qvault, frontmatter, "Line one\nLine two")
+    # Run sync
+    updated = sync_edited_quotes(str(qvault), dry_run=False, source_vault_path=str(tmp_path))
+    # Source file updated to multiline
+    src_content = read_file(src_path)
+    assert "> Line one" in src_content
+    assert "> Line two" in src_content
+    assert "^Quote001" in src_content
+    # Quote file edited flag reset
+    q_content = read_file(quote_path)
+    assert "edited: false" in q_content
+    assert updated == 1
+
+def test_edit_single_line_to_single_line(tmp_path):
+    # Setup source file with original single-line quote
+    orig = "> Old quote\n^Quote001\nOther text"
+    src_path = make_source_file(tmp_path, orig)
+    # Setup quote file with edited: true and new single-line quote
+    qvault = tmp_path / "vault"
+    qvault.mkdir()
+    frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
+    quote_path = make_quote_file(qvault, frontmatter, "New single line")
+    # Run sync
+    updated = sync_edited_quotes(str(qvault), dry_run=False, source_vault_path=str(tmp_path))
+    # Source file updated to new single line
+    src_content = read_file(src_path)
+    assert "> New single line" in src_content
+    assert "^Quote001" in src_content
+    # Quote file edited flag reset
+    q_content = read_file(quote_path)
+    assert "edited: false" in q_content
     assert updated == 1 
