@@ -63,18 +63,20 @@ def _process_single_delete_flag(
     source_file_path = os.path.join(source_vault_path, source_file) if source_vault_path else source_file
     if not os.path.exists(source_file_path):
         error_msg = f"Could not find source file {source_file} in {source_vault_path} for quote file {quote_file_path}"
-        print(f"  ERROR: {error_msg}")
         results['errors'].append(error_msg)
         return
     # Extract block ID from frontmatter
     block_id = frontmatter.get('block_id')
     if not block_id:
+        block_id = dest.quote.block_id
+    if not block_id:
         return
-    # Remove the quote from the source file
+    # Unwrap the quote from the source file
     source = SourceFile.from_file(source_file_path)
-    removed = source.remove_quote(block_id)
-    if removed and not dry_run:
-        source.save()
+    unwrapped = source.unwrap_quote(block_id)
+    if unwrapped:
+        if not dry_run:
+            source.save()
         results['quotes_unwrapped'] += 1
     # Delete the quote file
     if not dry_run:

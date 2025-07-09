@@ -28,7 +28,7 @@ class SourceFile:
             content = f.read()
         return validate_block_ids(content)
 
-    def assign_missing_block_ids(self) -> int:
+    def assign_missing_block_ids(self, dry_run: bool = False) -> int:
         """Assigns missing block IDs to quotes and updates the file. Returns the number of block IDs added."""
         from quote_vault_manager.quote_parser import get_next_block_id
         from quote_vault_manager.quote_writer import ensure_block_id_in_source
@@ -44,7 +44,7 @@ class SourceFile:
                 while next_block_id in used_ids:
                     num = int(next_block_id.replace('^Quote', '')) + 1
                     next_block_id = f'^Quote{num:03d}'
-                ensure_block_id_in_source(self.path, quote.text, next_block_id, dry_run=False)
+                ensure_block_id_in_source(self.path, quote.text, next_block_id, dry_run)
                 quote.block_id = next_block_id
                 used_ids.add(next_block_id)
                 block_ids_added += 1
@@ -73,14 +73,40 @@ class SourceFile:
                 return True
         return False
 
+    def unwrap_quote(self, block_id: str) -> bool:
+        """Unwraps a quote by converting it to regular text (wrapped in quotes). Returns True if unwrapped, False if not found."""
+        for quote in self.quotes:
+            if quote.block_id == block_id:
+                # Convert to regular text by wrapping in quotes
+                quote.text = f'"{quote.text}"'
+                quote.block_id = None  # Remove the block ID
+                return True
+        return False
+
     def save(self):
-        """Saves the current quotes (with block IDs) back to the source file."""
+        """Saves the current quotes (with block IDs) back to the source file, preserving frontmatter."""
+        from quote_vault_manager.quote_writer import read_quote_file_content, frontmatter_str_to_dict
+        # Read existing content to preserve frontmatter
+        frontmatter_str, _ = read_quote_file_content(self.path)
+        frontmatter = frontmatter_str_to_dict(frontmatter_str) if frontmatter_str else {}
+        
+        # Build new content with preserved frontmatter
         lines = []
+        if frontmatter:
+            from quote_vault_manager.quote_writer import frontmatter_dict_to_str
+            frontmatter_str = frontmatter_dict_to_str(frontmatter)
+            lines.append('---')
+            lines.append(frontmatter_str)
+            lines.append('---')
+            lines.append('')
+        
+        # Add quotes and block IDs
         for quote in self.quotes:
             if quote.text:
                 for line in quote.text.split('\n'):
                     lines.append(f'> {line}')
                 if quote.block_id:
                     lines.append(quote.block_id)
+        
         with open(self.path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(lines) + '\n') 

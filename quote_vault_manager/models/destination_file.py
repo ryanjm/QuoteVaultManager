@@ -15,10 +15,20 @@ class DestinationFile:
     def from_file(cls, path: str) -> 'DestinationFile':
         """Parses the file at path and returns a DestinationFile with frontmatter and quote."""
         from quote_vault_manager.quote_writer import read_quote_file_content, frontmatter_str_to_dict, extract_quote_text_from_content
+        import os
         frontmatter_str, content = read_quote_file_content(path)
         frontmatter = frontmatter_str_to_dict(frontmatter_str) if frontmatter_str else {}
         quote_text = extract_quote_text_from_content(content)
+        # Try to get block_id from frontmatter first, then from filename
         block_id = frontmatter.get('block_id') if isinstance(frontmatter.get('block_id'), str) else None
+        if not block_id:
+            # Extract from filename
+            filename = os.path.basename(path)
+            if ' - Quote' in filename:
+                parts = filename.split(' - Quote')
+                if len(parts) >= 2:
+                    block_id_part = parts[1].split(' - ')[0]
+                    block_id = f"^Quote{block_id_part}"
         quote = Quote(quote_text, block_id)
         return cls(frontmatter, quote, path=path)
 

@@ -33,7 +33,7 @@ def sync_source_file(
         results['errors'].extend(errors)
         return results
 
-    block_ids_added = source.assign_missing_block_ids()
+    block_ids_added = source.assign_missing_block_ids(dry_run)
     results['block_ids_added'] += block_ids_added
     if block_ids_added and not dry_run:
         source = SourceFile.from_file(source_file)  # Reload to get updated block IDs

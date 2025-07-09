@@ -9,13 +9,15 @@ class SourceVault:
         self.source_files: List[SourceFile] = self._load_source_files()
 
     def _load_source_files(self) -> List[SourceFile]:
-        """Loads all markdown source files from the directory."""
+        """Loads all markdown source files from the directory that have sync_quotes: true in frontmatter."""
         files = []
+        from quote_vault_manager.file_utils import has_sync_quotes_flag
         for root, _, filenames in os.walk(self.directory):
             for filename in filenames:
                 if filename.endswith('.md'):
                     path = os.path.join(root, filename)
-                    files.append(SourceFile.from_file(path))
+                    if has_sync_quotes_flag(path):
+                        files.append(SourceFile.from_file(path))
         return files
 
     def validate_all(self) -> List[str]:
@@ -25,11 +27,11 @@ class SourceVault:
             errors.extend(source.validate_block_ids())
         return errors
 
-    def assign_block_ids_all(self) -> int:
+    def assign_block_ids_all(self, dry_run: bool = False) -> int:
         """Assigns missing block IDs in all source files. Returns total block IDs added."""
         total = 0
         for source in self.source_files:
-            total += source.assign_missing_block_ids()
+            total += source.assign_missing_block_ids(dry_run)
         return total
 
     def save_all(self):
