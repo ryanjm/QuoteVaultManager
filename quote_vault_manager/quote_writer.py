@@ -5,11 +5,7 @@ import re
 import yaml
 
 def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "Notes", vault_root: str = "") -> str:
-    """
-    Creates an Obsidian URI in the correct format.
-    The file path should be relative to the vault and not include .md extension.
-    If vault_root is provided, source_file is made relative to it.
-    """
+    """Creates an Obsidian URI in the correct format."""
     # Remove .md extension
     if source_file.endswith('.md'):
         source_file = source_file[:-3]
@@ -24,70 +20,76 @@ def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "No
     encoded_block = quote(block_id)
     return f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}"
 
-def create_quote_filename(book_title: str, block_id: str, quote_text: str) -> str:
-    """
-    Creates a filename for a quote file using the convention:
-    [Book Title] - QuoteNNN - [First Few Words].md
-    """
-    # Remove caret from block_id for filename
-    clean_block_id = block_id.lstrip('^')
+def _truncate_words_to_length(text: str, max_length: int = 30) -> str:
+    """Truncate text to max_length, but don't cut words in the middle."""
+    if len(text) <= max_length:
+        return text
     
-    # Strip whitespace from quote text
+    truncated = text[:max_length]
+    last_space = truncated.rfind(' ')
+    if last_space > 0:
+        return truncated[:last_space]
+    return truncated
+
+def _clean_filename_text(text: str) -> str:
+    """Clean text for use in filenames by replacing unsafe characters."""
+    # Replace unsafe characters with hyphens
+    cleaned = text.replace('\\', '-').replace('/', '-').replace(':', '-')
+    # Remove multiple consecutive hyphens and trim
+    cleaned = re.sub(r'-+', '-', cleaned)
+    return cleaned.strip('- ')
+
+def create_quote_filename(book_title: str, block_id: str, quote_text: str) -> str:
+    """Creates a filename for a quote file using the convention: [Book Title] - QuoteNNN - [First Few Words].md"""
+    clean_block_id = block_id.lstrip('^')
     clean_quote_text = quote_text.strip()
     
     # Extract the first few words (up to 5 words, max 30 chars)
     words = clean_quote_text.split()[:5]
     first_words = ' '.join(words)
-    
-    # Truncate to 30 chars, but don't cut words in the middle
-    if len(first_words) > 30:
-        truncated = first_words[:30]
-        # Find the last space and truncate there
-        last_space = truncated.rfind(' ')
-        if last_space > 0:
-            first_words = truncated[:last_space]
-        else:
-            first_words = truncated
-    
-    # Clean up the first words for filename safety
-    first_words = first_words.replace('\\', '-').replace('/', '-').replace(':', '-')
-    # Remove multiple consecutive hyphens and trim
-    first_words = re.sub(r'-+', '-', first_words)
-    first_words = first_words.strip('- ')
+    first_words = _truncate_words_to_length(first_words, 30)
+    first_words = _clean_filename_text(first_words)
     
     return f"{book_title} - {clean_block_id} - {first_words}.md"
 
-def create_quote_content(quote_text: str, source_file: str, block_id: str, vault_name: str = "Notes", vault_root: str = "") -> str:
-    """
-    Creates the content for a quote file including frontmatter and source link.
-    """
-    # Create Obsidian URI for source
-    uri = create_obsidian_uri(source_file, block_id, vault_name, vault_root)
-    
-    # Use only the filename for the link text
-    link_text = os.path.basename(source_file).replace('.md', '')
-    
-    # Format multi-line quotes properly
+def _format_quote_text(quote_text: str) -> str:
+    """Format quote text with proper blockquote formatting."""
     quote_lines = quote_text.split('\n')
-    formatted_quote = '\n'.join(f'> {line}' for line in quote_lines)
+    return '\n'.join(f'> {line}' for line in quote_lines)
+
+def _create_quote_content_template(quote_text: str, source_file: str, block_id: str, frontmatter: str, vault_name: str, vault_root: str) -> str:
+    """Create quote content with the given frontmatter and quote text."""
+    from . import VERSION
+    from .transformations.v0_2_add_random_note_link import RANDOM_NOTE_LINK
     
-    content = f"""---
-delete: false
-favorite: false
-source_path: "{os.path.basename(source_file)}"
+    uri = create_obsidian_uri(source_file, block_id, vault_name, vault_root)
+    link_text = os.path.basename(source_file).replace('.md', '')
+    formatted_quote = _format_quote_text(quote_text)
+    
+    return f"""---
+{frontmatter}
 ---
 
 {formatted_quote}
 
 **Source:** [{link_text}]({uri})
+
+{RANDOM_NOTE_LINK}
 """
-    return content
+
+def create_quote_content(quote_text: str, source_file: str, block_id: str, vault_name: str = "Notes", vault_root: str = "") -> str:
+    """Creates the content for a quote file including frontmatter and source link."""
+    from . import VERSION
+    
+    default_frontmatter = f"""delete: false
+favorite: false
+source_path: "{os.path.basename(source_file)}"
+version: "{VERSION}"
+"""
+    return _create_quote_content_template(quote_text, source_file, block_id, default_frontmatter, vault_name, vault_root)
 
 def read_quote_file_content(file_path: str) -> tuple[Optional[str], Optional[str]]:
-    """
-    Reads a quote file and returns (frontmatter, quote_content) tuple.
-    Returns (None, None) if file doesn't exist or can't be read.
-    """
+    """Reads a quote file and returns (frontmatter, quote_content) tuple."""
     if not os.path.exists(file_path):
         return None, None
     
@@ -107,9 +109,7 @@ def read_quote_file_content(file_path: str) -> tuple[Optional[str], Optional[str
         return None, None
 
 def extract_quote_text_from_content(content: str) -> Optional[str]:
-    """
-    Extracts the actual quote text from quote file content (removes > prefix).
-    """
+    """Extracts the actual quote text from quote file content (removes > prefix)."""
     lines = content.split('\n')
     quote_lines = []
     for line in lines:
@@ -121,11 +121,7 @@ def extract_quote_text_from_content(content: str) -> Optional[str]:
 
 def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_file: str, 
                                 block_id: str, dry_run: bool = False, vault_name: str = "Notes", vault_root: str = "") -> bool:
-    """
-    Updates a quote file if the quote content has changed.
-    Preserves existing frontmatter.
-    Returns True if file was updated, False otherwise.
-    """
+    """Updates a quote file if the quote content has changed. Preserves existing frontmatter."""
     frontmatter, existing_content = read_quote_file_content(file_path)
     
     if frontmatter is None:
@@ -136,28 +132,14 @@ def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_fil
                 f.write(content)
         return True
     
-    # Extract existing quote text
     if existing_content is None:
         return False
     
     existing_quote_text = extract_quote_text_from_content(existing_content)
-    
     if existing_quote_text != new_quote_text:
         # Quote content has changed, update it
         if not dry_run:
-            # Create new content with existing frontmatter
-            uri = create_obsidian_uri(source_file, block_id, vault_name, vault_root)
-            link_text = os.path.basename(source_file).replace('.md', '')
-            quote_lines = new_quote_text.split('\n')
-            formatted_quote = '\n'.join(f'> {line}' for line in quote_lines)
-            new_content = f"""---
-{frontmatter}
----
-
-{formatted_quote}
-
-**Source:** [{link_text}]({uri})
-"""
+            new_content = _create_quote_content_template(new_quote_text, source_file, block_id, frontmatter, vault_name, vault_root)
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
         return True
@@ -166,10 +148,7 @@ def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_fil
 
 def write_quote_file(destination_path: str, book_title: str, block_id: str, 
                     quote_text: str, source_file: str, dry_run: bool = False, vault_name: str = "Notes", vault_root: str = "") -> str:
-    """
-    Creates a quote file in the destination directory.
-    Returns the path to the created file.
-    """
+    """Creates a quote file in the destination directory."""
     # Create book directory if it doesn't exist
     book_dir = os.path.join(destination_path, book_title)
     if not dry_run:
@@ -187,10 +166,7 @@ def write_quote_file(destination_path: str, book_title: str, block_id: str,
     return file_path
 
 def delete_quote_file(file_path: str, dry_run: bool = False) -> bool:
-    """
-    Deletes a quote file.
-    Returns True if file was deleted or would be deleted in dry run, False if file doesn't exist.
-    """
+    """Deletes a quote file."""
     if not os.path.exists(file_path):
         return False
     
@@ -204,10 +180,7 @@ def delete_quote_file(file_path: str, dry_run: bool = False) -> bool:
         return True
 
 def find_quote_files_for_source(destination_path: str, source_file: str) -> list[str]:
-    """
-    Finds all quote files that reference a specific source file.
-    Returns a list of file paths.
-    """
+    """Finds all quote files that reference a specific source file."""
     quote_files = []
     
     if not os.path.exists(destination_path):
@@ -230,22 +203,44 @@ def find_quote_files_for_source(destination_path: str, source_file: str) -> list
     return quote_files
 
 def has_delete_flag(file_path: str) -> bool:
-    """
-    Checks if a quote file has delete: true in its frontmatter.
-    Returns True if delete flag is set, False otherwise.
-    """
+    """Checks if a quote file has delete: true in its frontmatter."""
     frontmatter, _ = read_quote_file_content(file_path)
     if frontmatter is None:
         return False
     
     return 'delete: true' in frontmatter
 
+def _is_blockquote_line(line: str) -> bool:
+    """Check if a line starts a blockquote."""
+    return line.strip().startswith('>')
+
+def _collect_blockquote_lines(lines: list[str], start_index: int) -> tuple[list[str], int]:
+    """Collect consecutive blockquote lines starting from start_index. Returns (quote_lines, end_index)."""
+    quote_lines = []
+    i = start_index
+    while i < len(lines) and _is_blockquote_line(lines[i]):
+        quote_lines.append(lines[i].lstrip('> ').rstrip())
+        i += 1
+    return quote_lines, i
+
+def _process_blockquote_section(lines: list[str], i: int, target_block_id: str) -> tuple[list[str], int, bool]:
+    """Process a blockquote section and check if it matches the target block ID."""
+    quote_lines, i = _collect_blockquote_lines(lines, i)
+    
+    # Check if the next line is the block ID we're looking for
+    if i < len(lines) and lines[i].strip() == target_block_id:
+        # This is the quote we need to unwrap
+        quote_text = ' '.join(quote_lines)
+        return [f'"{quote_text}"'], i + 1, True  # Skip the block ID line
+    else:
+        # Not the right quote, keep original lines
+        original_lines = []
+        for j in range(i - len(quote_lines), i):
+            original_lines.append(lines[j])
+        return original_lines, i, False
+
 def unwrap_quote_in_source(source_file_path: str, block_id: str, dry_run: bool = False) -> bool:
-    """
-    Unwraps a quote in the source file by removing blockquote formatting and block ID.
-    Wraps the text in quotation marks.
-    Returns True if the file was modified, False otherwise.
-    """
+    """Unwraps a quote in the source file by removing blockquote formatting and block ID."""
     if not os.path.exists(source_file_path):
         return False
     
@@ -261,27 +256,12 @@ def unwrap_quote_in_source(source_file_path: str, block_id: str, dry_run: bool =
         while i < len(lines):
             line = lines[i]
             
-            # Check if this line starts a blockquote
-            if line.strip().startswith('>'):
-                quote_lines = []
-                quote_start = i
-                
-                # Collect all consecutive blockquote lines
-                while i < len(lines) and lines[i].strip().startswith('>'):
-                    quote_lines.append(lines[i].lstrip('> ').rstrip())
-                    i += 1
-                
-                # Check if the next line is the block ID we're looking for
-                if i < len(lines) and lines[i].strip() == block_id:
-                    # This is the quote we need to unwrap
-                    quote_text = ' '.join(quote_lines)
-                    new_lines.append(f'"{quote_text}"')
-                    i += 1  # Skip the block ID line
+            if _is_blockquote_line(line):
+                processed_lines, new_i, was_unwrapped = _process_blockquote_section(lines, i, block_id)
+                new_lines.extend(processed_lines)
+                i = new_i
+                if was_unwrapped:
                     modified = True
-                else:
-                    # Not the right quote, keep original lines
-                    for j in range(quote_start, i):
-                        new_lines.append(lines[j])
             else:
                 new_lines.append(line)
                 i += 1
@@ -294,13 +274,39 @@ def unwrap_quote_in_source(source_file_path: str, block_id: str, dry_run: bool =
         
     except Exception:
         return False
+
+def _has_block_id_at_index(lines: list[str], index: int) -> bool:
+    """Check if there's a block ID at the given index."""
+    return index < len(lines) and lines[index].strip().startswith('^Quote')
+
+def _process_blockquote_for_id_assignment(lines: list[str], i: int, target_quote_text: str) -> tuple[list[str], int, bool]:
+    """Process a blockquote section for block ID assignment."""
+    quote_lines, i = _collect_blockquote_lines(lines, i)
+    has_block_id = _has_block_id_at_index(lines, i)
+    
+    # Check if this quote matches our target quote
+    current_quote_text = '\n'.join(quote_lines).strip()
+    target_quote_text = target_quote_text.strip()
+    
+    if current_quote_text == target_quote_text and not has_block_id:
+        # This is our target quote and it doesn't have a block ID
+        # We'll add the block ID later, for now just return the lines
+        original_lines = []
+        for j in range(i - len(quote_lines), i):
+            original_lines.append(lines[j])
+        return original_lines, i, True  # Signal that we need to add block ID
+    else:
+        # Not our target quote or already has block ID, keep as is
+        original_lines = []
+        for j in range(i - len(quote_lines), i):
+            original_lines.append(lines[j])
+        if has_block_id:
+            original_lines.append(lines[i])  # Include the block ID line
+            i += 1
+        return original_lines, i, False
 
 def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: str, dry_run: bool = False) -> bool:
-    """
-    Ensures that a quote in the source file has the specified block ID.
-    If the quote doesn't have a block ID, adds it.
-    Returns True if the file was modified, False otherwise.
-    """
+    """Ensures that a quote in the source file has the specified block ID."""
     if not os.path.exists(source_file_path):
         return False
     
@@ -316,37 +322,13 @@ def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: 
         while i < len(lines):
             line = lines[i]
             
-            # Check if this line starts a blockquote
-            if line.strip().startswith('>'):
-                quote_lines = []
-                quote_start = i
-                
-                # Collect all consecutive blockquote lines
-                while i < len(lines) and lines[i].strip().startswith('>'):
-                    quote_lines.append(lines[i].lstrip('> ').rstrip())
-                    i += 1
-                
-                # Check if the next line is a block ID
-                has_block_id = False
-                if i < len(lines) and lines[i].strip().startswith('^Quote'):
-                    has_block_id = True
-                    i += 1
-                
-                # Check if this quote matches our target quote (normalize whitespace)
-                current_quote_text = '\n'.join(quote_lines).strip()
-                target_quote_text = quote_text.strip()
-                
-                if current_quote_text == target_quote_text and not has_block_id:
-                    # This is our target quote and it doesn't have a block ID
-                    # Add the block ID
-                    for j in range(quote_start, i):
-                        new_lines.append(lines[j])
+            if _is_blockquote_line(line):
+                processed_lines, new_i, needs_block_id = _process_blockquote_for_id_assignment(lines, i, quote_text)
+                new_lines.extend(processed_lines)
+                i = new_i
+                if needs_block_id:
                     new_lines.append(block_id)
                     modified = True
-                else:
-                    # Not our target quote or already has block ID, keep as is
-                    for j in range(quote_start, i):
-                        new_lines.append(lines[j])
             else:
                 new_lines.append(line)
                 i += 1
@@ -358,22 +340,17 @@ def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: 
         return modified
         
     except Exception:
-        return False 
+        return False
 
 def frontmatter_str_to_dict(frontmatter: str) -> dict:
-    """
-    Converts a YAML frontmatter string to a Python dict.
-    Returns an empty dict if parsing fails.
-    """
+    """Converts a YAML frontmatter string to a Python dict."""
     try:
         return yaml.safe_load(frontmatter) or {}
     except Exception:
         return {}
 
 def frontmatter_dict_to_str(frontmatter_dict: dict) -> str:
-    """
-    Converts a Python dict to a YAML frontmatter string.
-    """
+    """Converts a Python dict to a YAML frontmatter string."""
     try:
         return yaml.safe_dump(frontmatter_dict, sort_keys=False).strip()
     except Exception:
