@@ -85,14 +85,12 @@ def is_edited_quote_file(file_path: str) -> bool:
     return fm.get('edited') is True
 
 def get_edited_quote_info(file_path: str, filename: str) -> tuple:
-    """Extract source_path, block_id, new_quote_text, and frontmatter dict from file."""
+    """Extract source_path, block_id (from filename), new_quote_text, and frontmatter dict from file."""
     from .quote_writer import read_quote_file_content, frontmatter_str_to_dict, extract_quote_text_from_content
     frontmatter, content = read_quote_file_content(file_path)
     fm = frontmatter_str_to_dict(frontmatter) if frontmatter else {}
     source_path = fm.get('source_path') if isinstance(fm.get('source_path'), str) else None
-    block_id = fm.get('block_id') if isinstance(fm.get('block_id'), str) else None
-    if not block_id:
-        block_id = _extract_block_id_from_filename(filename)
+    block_id = _extract_block_id_from_filename(filename)
     new_quote_text = extract_quote_text_from_content(content or "")
     return source_path, block_id, new_quote_text, fm
 
