@@ -48,10 +48,22 @@ def sync_vaults(config: Dict[str, str], dry_run: bool = False) -> Dict[str, Any]
     results['total_block_ids_added'] += block_ids_added
     source_vault.save_all()
 
-    # Step 2: (Optional) Add more batch operations as needed
-    # e.g., syncing, deleting, etc., using vault methods
+    # Step 2: Sync all source files to the destination vault
+    sync_results = source_vault.sync_to_destination(destination_vault, dry_run)
+    for k in sync_results:
+        if k == 'errors':
+            results['errors'].extend(sync_results[k])
+        else:
+            results[k] += sync_results[k]
 
-    # The rest of the orchestration (edited quotes, deletions, etc.) can be updated similarly
+    # Step 3: Batch delete quote files with delete flag
+    delete_results = destination_vault.delete_flagged(source_vault_path, dry_run)
+    results['total_quotes_unwrapped'] = delete_results.get('quotes_unwrapped', 0)
+    results['errors'].extend(delete_results.get('errors', []))
+
+    # Step 4: Batch sync edited quotes back to source files
+    edited_synced = destination_vault.sync_edited_back(source_vault_path, dry_run)
+    results['total_edited_quotes_synced'] = edited_synced
 
     return results
 

@@ -35,4 +35,27 @@ class SourceVault:
     def save_all(self):
         """Saves all source files."""
         for source in self.source_files:
-            source.save() 
+            source.save()
+
+    def sync_to_destination(self, destination_vault, dry_run: bool = False) -> dict:
+        """Syncs all source files to the destination vault. Returns a results dict."""
+        from quote_vault_manager.source_sync import sync_source_file
+        results = {
+            'source_files_processed': 0,
+            'total_quotes_processed': 0,
+            'total_quotes_created': 0,
+            'total_quotes_updated': 0,
+            'total_block_ids_added': 0,
+            'total_quotes_deleted': 0,
+            'errors': []
+        }
+        for source in self.source_files:
+            file_results = sync_source_file(source.path, destination_vault.directory, dry_run, self.directory)
+            results['source_files_processed'] += 1
+            results['total_quotes_processed'] += file_results['quotes_processed']
+            results['total_quotes_created'] += file_results['quotes_created']
+            results['total_quotes_updated'] += file_results['quotes_updated']
+            results['total_block_ids_added'] += file_results['block_ids_added']
+            results['total_quotes_deleted'] += file_results.get('quotes_deleted', 0)
+            results['errors'].extend(file_results['errors'])
+        return results 
