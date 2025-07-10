@@ -121,6 +121,49 @@ class SourceFile:
             return os.path.join(source_vault_path, source_path)
         return source_path
 
+    @staticmethod
+    def overwrite_quote_in_source(source_file_path: str, block_id: str, new_quote_text: str, dry_run: bool = False) -> bool:
+        """Overwrite a quote in the source file (by block ID) with new text, preserving blockquote formatting and block ID. Only the relevant blockquote section is updated."""
+        import os
+        if not os.path.exists(source_file_path):
+            return False
+        try:
+            with open(source_file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            lines = content.splitlines()
+            def _is_blockquote_line(line):
+                return line.strip().startswith('>')
+            def _find_blockquote_with_id(lines, block_id):
+                i = 0
+                while i < len(lines):
+                    if _is_blockquote_line(lines[i]):
+                        start = i
+                        while i < len(lines) and _is_blockquote_line(lines[i]):
+                            i += 1
+                        if i < len(lines) and lines[i].strip() == block_id:
+                            end = i
+                            return start, end
+                    i += 1
+                return None, None
+            def _format_quote_text(quote_text):
+                quote_lines = quote_text.split('\n')
+                return [f'> {line}' for line in quote_lines]
+            start, end = _find_blockquote_with_id(lines, block_id)
+            if start is None or end is None:
+                return False
+            formatted_new = _format_quote_text(new_quote_text)
+            old_blockquote = lines[start:end]
+            new_blockquote = formatted_new
+            if old_blockquote == new_blockquote:
+                return False
+            new_lines = lines[:start] + new_blockquote + [block_id] + lines[end+1:]
+            if not dry_run:
+                with open(source_file_path, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(new_lines))
+            return True
+        except Exception:
+            return False
+
     @classmethod
     def process_edited_quote(
         cls,
@@ -137,10 +180,8 @@ class SourceFile:
         source_file_path = cls.build_source_file_path(source_path, source_vault_path)
         if not isinstance(source_file_path, str) or not source_file_path:
             return False
-        source = cls.from_file(source_file_path)
-        updated = source.update_quote(block_id, new_quote_text)
+        updated = cls.overwrite_quote_in_source(source_file_path, block_id, new_quote_text, dry_run)
         if updated and not dry_run:
-            source.save()
             from quote_vault_manager.models.destination_file import DestinationFile
             dest = DestinationFile.from_file(file_path)
             dest.update_frontmatter({'edited': False})

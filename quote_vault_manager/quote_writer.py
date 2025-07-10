@@ -120,69 +120,6 @@ def extract_quote_text_from_content(content: Optional[str]) -> Optional[str]:
             break
     return '\n'.join(quote_lines) if quote_lines else None
 
-# DEPRECATED: Use DestinationFile/SourceFile methods instead.
-def update_quote_file_if_changed(file_path: str, new_quote_text: str, source_file: str, 
-                                block_id: str, dry_run: bool = False, vault_name: str = "Notes", vault_root: str = "") -> bool:
-    """Updates a quote file if the quote content has changed. Preserves existing frontmatter."""
-    frontmatter, existing_content = read_quote_file_content(file_path)
-    
-    if frontmatter is None:
-        # File doesn't exist or is corrupted, create new one
-        if not dry_run:
-            content = create_quote_content(new_quote_text, source_file, block_id, vault_name, vault_root)
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-        return True
-    
-    if existing_content is None:
-        return False
-    
-    existing_quote_text = extract_quote_text_from_content(existing_content)
-    if existing_quote_text != new_quote_text:
-        # Quote content has changed, update it
-        if not dry_run:
-            new_content = _create_quote_content_template(new_quote_text, source_file, block_id, frontmatter, vault_name, vault_root)
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(new_content)
-        return True
-    
-    return False
-
-# DEPRECATED: Use DestinationFile/SourceFile methods instead.
-def write_quote_file(destination_path: str, book_title: str, block_id: str, 
-                    quote_text: str, source_file: str, dry_run: bool = False, vault_name: str = "Notes", vault_root: str = "") -> str:
-    """Creates a quote file in the destination directory."""
-    # Create book directory if it doesn't exist
-    book_dir = os.path.join(destination_path, book_title)
-    if not dry_run:
-        os.makedirs(book_dir, exist_ok=True)
-    
-    # Generate filename and content
-    filename = create_quote_filename(book_title, block_id, quote_text)
-    file_path = os.path.join(book_dir, filename)
-    
-    if not dry_run:
-        content = create_quote_content(quote_text, source_file, block_id, vault_name, vault_root)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-    
-    return file_path
-
-# DEPRECATED: Use DestinationFile/SourceFile methods instead.
-def delete_quote_file(file_path: str, dry_run: bool = False) -> bool:
-    """Deletes a quote file."""
-    if not os.path.exists(file_path):
-        return False
-    
-    if not dry_run:
-        try:
-            os.remove(file_path)
-            return True
-        except Exception:
-            return False
-    else:
-        return True
-
 def find_quote_files_for_source(destination_path: str, source_file: str) -> list[str]:
     """Finds all quote files that reference a specific source file."""
     quote_files = []
@@ -309,44 +246,6 @@ def _process_blockquote_for_id_assignment(lines: list[str], i: int, target_quote
             i += 1
         return original_lines, i, False
 
-# DEPRECATED: Use DestinationFile/SourceFile methods instead.
-def ensure_block_id_in_source(source_file_path: str, quote_text: str, block_id: str, dry_run: bool = False) -> bool:
-    """Ensures that a quote in the source file has the specified block ID."""
-    if not os.path.exists(source_file_path):
-        return False
-    
-    try:
-        with open(source_file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        lines = content.splitlines()
-        modified = False
-        new_lines = []
-        i = 0
-        
-        while i < len(lines):
-            line = lines[i]
-            
-            if _is_blockquote_line(line):
-                processed_lines, new_i, needs_block_id = _process_blockquote_for_id_assignment(lines, i, quote_text)
-                new_lines.extend(processed_lines)
-                i = new_i
-                if needs_block_id:
-                    new_lines.append(block_id)
-                    modified = True
-            else:
-                new_lines.append(line)
-                i += 1
-        
-        if modified and not dry_run:
-            with open(source_file_path, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(new_lines))
-        
-        return modified
-        
-    except Exception:
-        return False
-
 def _find_blockquote_with_id(lines, block_id):
     """Find the start/end indices of the blockquote with the given block_id."""
     i = 0
@@ -367,32 +266,6 @@ def _replace_blockquote(lines, start, end, new_quote_text, block_id):
     """Replace lines[start:end+1] with new blockquote and block_id."""
     formatted_new = _format_quote_text(new_quote_text).split('\n')
     return lines[:start] + formatted_new + [block_id] + lines[end+1:]
-
-# DEPRECATED: Use DestinationFile/SourceFile methods instead.
-def overwrite_quote_in_source(source_file_path: str, block_id: str, new_quote_text: str, dry_run: bool = False) -> bool:
-    """Overwrite a quote in the source file (by block ID) with new text, preserving blockquote formatting and block ID."""
-    if not os.path.exists(source_file_path):
-        return False
-    try:
-        with open(source_file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        lines = content.splitlines()
-        start, end = _find_blockquote_with_id(lines, block_id)
-        if start is None or end is None:
-            return False
-        # Prepare new blockquote section
-        formatted_new = _format_quote_text(new_quote_text).split('\n')
-        old_blockquote = lines[start:end]
-        new_blockquote = formatted_new
-        if old_blockquote == new_blockquote:
-            return False
-        new_lines = lines[:start] + new_blockquote + [block_id] + lines[end+1:]
-        if not dry_run:
-            with open(source_file_path, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(new_lines))
-        return True
-    except Exception:
-        return False
 
 def frontmatter_str_to_dict(frontmatter: str) -> dict:
     """Converts a YAML frontmatter string to a Python dict."""
