@@ -1,14 +1,14 @@
 from .destination_file import DestinationFile
 from typing import List
 import os
+from .base_vault import BaseVault
 
-class DestinationVault:
+class DestinationVault(BaseVault):
     """Represents a collection of destination (quote) files in a vault."""
     def __init__(self, directory: str):
-        self.directory = directory
-        self.destination_files: List[DestinationFile] = self._load_destination_files()
+        super().__init__(directory)
 
-    def _load_destination_files(self) -> List[DestinationFile]:
+    def _load_files(self) -> List[DestinationFile]:
         """Loads all markdown destination files from the directory."""
         files = []
         for root, _, filenames in os.walk(self.directory):
@@ -20,12 +20,12 @@ class DestinationVault:
 
     def transform_all(self, transform_fn):
         """Applies a transformation function to all destination files."""
-        for dest in self.destination_files:
+        for dest in self.files:
             transform_fn(dest)
 
     def save_all(self):
         """Saves all destination files."""
-        for dest in self.destination_files:
+        for dest in self.files:
             if dest.path:
                 dest.save(dest.path)
 
@@ -36,7 +36,7 @@ class DestinationVault:
             'quotes_unwrapped': 0,
             'errors': []
         }
-        for dest in self.destination_files:
+        for dest in self.files:
             if not dest.is_marked_for_deletion:
                 continue
             frontmatter = dest.frontmatter
@@ -65,4 +65,13 @@ class DestinationVault:
     def sync_edited_back(self, source_vault_path: str, dry_run: bool = False) -> int:
         """Syncs all edited quotes back to their source files. Returns the count synced."""
         from quote_vault_manager.source_sync import sync_edited_quotes
-        return sync_edited_quotes(self.directory, dry_run=dry_run, source_vault_path=source_vault_path) 
+        return sync_edited_quotes(self.directory, dry_run=dry_run, source_vault_path=source_vault_path)
+
+    def find_quote_files_for_source(self, source_file: str) -> list:
+        import os
+        quote_files = []
+        source_filename = os.path.basename(source_file)
+        for dest in self.files:
+            if dest.path and source_filename in os.path.basename(dest.path):
+                quote_files.append(dest.path)
+        return quote_files 

@@ -115,3 +115,114 @@ class DestinationFile:
                 block_id_part = parts[1].split(' - ')[0]
                 return f"^Quote{block_id_part}"
         return "" 
+
+    @staticmethod
+    def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "Notes", vault_root: str = "") -> str:
+        """Creates an Obsidian URI in the correct format."""
+        from urllib.parse import quote
+        import os
+        if source_file.endswith('.md'):
+            source_file = source_file[:-3]
+        if vault_root:
+            rel_path = os.path.relpath(source_file, vault_root)
+        else:
+            rel_path = source_file
+        rel_path = rel_path.replace(os.sep, '/')
+        encoded_file = quote(rel_path)
+        encoded_block = quote(block_id)
+        return f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}"
+
+    @staticmethod
+    def _truncate_words_to_length(text: str, max_length: int = 30) -> str:
+        if len(text) <= max_length:
+            return text
+        truncated = text[:max_length]
+        last_space = truncated.rfind(' ')
+        if last_space > 0:
+            return truncated[:last_space]
+        return truncated
+
+    @staticmethod
+    def _clean_filename_text(text: str) -> str:
+        import re
+        cleaned = text.replace('\\', '-').replace('/', '-').replace(':', '-')
+        cleaned = re.sub(r'-+', '-', cleaned)
+        return cleaned.strip('- ')
+
+    @staticmethod
+    def create_quote_filename(book_title: str, block_id: str, quote_text: str) -> str:
+        clean_block_id = block_id.lstrip('^')
+        clean_quote_text = quote_text.strip()
+        words = clean_quote_text.split()[:5]
+        first_words = ' '.join(words)
+        first_words = DestinationFile._truncate_words_to_length(first_words, 30)
+        first_words = DestinationFile._clean_filename_text(first_words)
+        return f"{book_title} - {clean_block_id} - {first_words}.md"
+
+    @staticmethod
+    def _format_quote_text(quote_text: str) -> str:
+        quote_lines = quote_text.split('\n')
+        return '\n'.join(f'> {line}' for line in quote_lines)
+
+    @staticmethod
+    def _create_quote_content_template(quote_text: str, source_file: str, block_id: str, frontmatter: str, vault_name: str, vault_root: str) -> str:
+        from quote_vault_manager import VERSION
+        from quote_vault_manager.transformations.v0_2_add_random_note_link import RANDOM_NOTE_LINK
+        import os
+        uri = DestinationFile.create_obsidian_uri(source_file, block_id, vault_name, vault_root)
+        link_text = os.path.basename(source_file).replace('.md', '')
+        formatted_quote = DestinationFile._format_quote_text(quote_text)
+        return f"""---\n{frontmatter}\n---\n\n{formatted_quote}\n\n**Source:** [{link_text}]({uri})\n\n{RANDOM_NOTE_LINK}\n"""
+
+    @staticmethod
+    def create_quote_content(quote_text: str, source_file: str, block_id: str, vault_name: str = "Notes", vault_root: str = "") -> str:
+        from quote_vault_manager import VERSION
+        default_frontmatter = f"""delete: false\nfavorite: false\nedited: false\nversion: \"{VERSION}\"\n"""
+        return DestinationFile._create_quote_content_template(quote_text, source_file, block_id, default_frontmatter, vault_name, vault_root)
+
+    @staticmethod
+    def read_quote_file_content(file_path: str) -> tuple:
+        import os
+        if not os.path.exists(file_path):
+            return None, None
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            parts = content.split('---', 2)
+            if len(parts) >= 3:
+                frontmatter = parts[1].strip()
+                quote_content = parts[2].strip()
+                return frontmatter, quote_content
+            else:
+                return None, content.strip()
+        except Exception:
+            return None, None
+
+    @staticmethod
+    def extract_quote_text_from_content(content: str) -> str:
+        if content is None:
+            return None
+        lines = content.split('\n')
+        quote_lines = []
+        for line in lines:
+            if line.strip().startswith('>'):
+                quote_lines.append(line.lstrip('> ').rstrip())
+            elif line.strip().startswith('**Source:'):
+                break
+        return '\n'.join(quote_lines) if quote_lines else None
+
+    @staticmethod
+    def frontmatter_str_to_dict(frontmatter: str) -> dict:
+        import yaml
+        try:
+            return yaml.safe_load(frontmatter) or {}
+        except Exception:
+            return {}
+
+    @staticmethod
+    def frontmatter_dict_to_str(frontmatter_dict: dict) -> str:
+        import yaml
+        try:
+            return yaml.safe_dump(frontmatter_dict, sort_keys=False).strip()
+        except Exception:
+            return "" 

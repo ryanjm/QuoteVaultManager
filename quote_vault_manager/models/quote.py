@@ -17,3 +17,9 @@ class Quote:
     def differs_from(self, other: 'Quote') -> bool:
         """Checks if this quote differs from another quote."""
         return self.text != other.text or self.block_id != other.block_id 
+
+    @staticmethod
+    def _format_quote_text(quote_text: str) -> str:
+        """Format quote text with proper blockquote formatting."""
+        quote_lines = quote_text.split('\n')
+        return '\n'.join(f'> {line}' for line in quote_lines) 

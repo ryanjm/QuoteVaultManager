@@ -31,7 +31,6 @@ class SourceFile:
     def assign_missing_block_ids(self, dry_run: bool = False) -> int:
         """Assigns missing block IDs to quotes and updates the file. Returns the number of block IDs added."""
         from quote_vault_manager.quote_parser import get_next_block_id
-        from quote_vault_manager.quote_writer import ensure_block_id_in_source
         block_ids_added = 0
         # Find the next available block ID
         with open(self.path, 'r', encoding='utf-8') as f:
@@ -44,7 +43,31 @@ class SourceFile:
                 while next_block_id in used_ids:
                     num = int(next_block_id.replace('^Quote', '')) + 1
                     next_block_id = f'^Quote{num:03d}'
-                ensure_block_id_in_source(self.path, quote.text, next_block_id, dry_run)
+                # Inline logic for ensuring block ID in source
+                import os
+                if not os.path.exists(self.path):
+                    continue
+                with open(self.path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                lines = content.splitlines()
+                modified = False
+                new_lines = []
+                i = 0
+                while i < len(lines):
+                    line = lines[i]
+                    if SourceFile._is_blockquote_line(line):
+                        processed_lines, new_i, needs_block_id = SourceFile._process_blockquote_for_id_assignment(lines, i, quote.text)
+                        new_lines.extend(processed_lines)
+                        i = new_i
+                        if needs_block_id:
+                            new_lines.append(next_block_id)
+                            modified = True
+                    else:
+                        new_lines.append(line)
+                        i += 1
+                if modified and not dry_run:
+                    with open(self.path, 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(new_lines))
                 quote.block_id = next_block_id
                 used_ids.add(next_block_id)
                 block_ids_added += 1
@@ -186,3 +209,101 @@ class SourceFile:
             dest = DestinationFile.from_file(file_path)
             dest.update_frontmatter({'edited': False})
         return updated 
+
+    @staticmethod
+    def _is_blockquote_line(line: str) -> bool:
+        return line.strip().startswith('>')
+
+    @staticmethod
+    def _collect_blockquote_lines(lines: list, start_index: int) -> tuple:
+        quote_lines = []
+        i = start_index
+        while i < len(lines) and SourceFile._is_blockquote_line(lines[i]):
+            quote_lines.append(lines[i].lstrip('> ').rstrip())
+            i += 1
+        return quote_lines, i
+
+    @staticmethod
+    def _process_blockquote_section(lines: list, i: int, target_block_id: str) -> tuple:
+        quote_lines, i = SourceFile._collect_blockquote_lines(lines, i)
+        if i < len(lines) and lines[i].strip() == target_block_id:
+            quote_text = ' '.join(quote_lines)
+            return [f'"{quote_text}"'], i + 1, True
+        else:
+            original_lines = []
+            for j in range(i - len(quote_lines), i):
+                original_lines.append(lines[j])
+            return original_lines, i, False
+
+    @staticmethod
+    def _has_block_id_at_index(lines: list, index: int) -> bool:
+        return index < len(lines) and lines[index].strip().startswith('^Quote')
+
+    @staticmethod
+    def _process_blockquote_for_id_assignment(lines: list, i: int, target_quote_text: str) -> tuple:
+        quote_lines, i = SourceFile._collect_blockquote_lines(lines, i)
+        has_block_id = SourceFile._has_block_id_at_index(lines, i)
+        current_quote_text = '\n'.join(quote_lines).strip()
+        target_quote_text = target_quote_text.strip()
+        if current_quote_text == target_quote_text and not has_block_id:
+            original_lines = []
+            for j in range(i - len(quote_lines), i):
+                original_lines.append(lines[j])
+            return original_lines, i, True
+        else:
+            original_lines = []
+            for j in range(i - len(quote_lines), i):
+                original_lines.append(lines[j])
+            if has_block_id:
+                original_lines.append(lines[i])
+                i += 1
+            return original_lines, i, False
+
+    @staticmethod
+    def _find_blockquote_with_id(lines: list, block_id: str):
+        i = 0
+        while i < len(lines):
+            if SourceFile._is_blockquote_line(lines[i]):
+                start = i
+                while i < len(lines) and SourceFile._is_blockquote_line(lines[i]):
+                    i += 1
+                if i < len(lines) and lines[i].strip() == block_id:
+                    end = i
+                    return start, end
+            i += 1
+        return None, None
+
+    @staticmethod
+    def _replace_blockquote(lines: list, start: int, end: int, new_quote_text: str, block_id: str):
+        formatted_new = SourceFile._format_quote_text(new_quote_text).split('\n')
+        return lines[:start] + formatted_new + [block_id] + lines[end+1:]
+
+    @staticmethod
+    def unwrap_quote_in_source(source_file_path: str, block_id: str, dry_run: bool = False) -> bool:
+        import os
+        if not os.path.exists(source_file_path):
+            return False
+        try:
+            with open(source_file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            lines = content.splitlines()
+            modified = False
+            new_lines = []
+            i = 0
+            while i < len(lines):
+                line = lines[i]
+                if SourceFile._is_blockquote_line(line):
+                    processed_lines, new_i, was_unwrapped = SourceFile._process_blockquote_section(lines, i, block_id)
+                    new_lines.extend(processed_lines)
+                    i = new_i
+                    if was_unwrapped:
+                        modified = True
+                else:
+                    new_lines.append(line)
+                    i += 1
+            if modified and not dry_run:
+                with open(source_file_path, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(new_lines))
+            return modified
+        except Exception:
+            return False 

@@ -4,22 +4,6 @@ from urllib.parse import quote
 import re
 import yaml
 
-def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "Notes", vault_root: str = "") -> str:
-    """Creates an Obsidian URI in the correct format."""
-    # Remove .md extension
-    if source_file.endswith('.md'):
-        source_file = source_file[:-3]
-    # If vault_root is provided, make path relative
-    if vault_root:
-        rel_path = os.path.relpath(source_file, vault_root)
-    else:
-        rel_path = source_file
-    # Normalize to forward slashes
-    rel_path = rel_path.replace(os.sep, '/')
-    encoded_file = quote(rel_path)
-    encoded_block = quote(block_id)
-    return f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}"
-
 def _truncate_words_to_length(text: str, max_length: int = 30) -> str:
     """Truncate text to max_length, but don't cut words in the middle."""
     if len(text) <= max_length:
@@ -143,43 +127,6 @@ def find_quote_files_for_source(destination_path: str, source_file: str) -> list
     
     return quote_files
 
-def has_delete_flag(file_path: str) -> bool:
-    """Checks if a quote file has delete: true in its frontmatter."""
-    frontmatter, _ = read_quote_file_content(file_path)
-    if frontmatter is None:
-        return False
-    
-    return 'delete: true' in frontmatter
-
-def _is_blockquote_line(line: str) -> bool:
-    """Check if a line starts a blockquote."""
-    return line.strip().startswith('>')
-
-def _collect_blockquote_lines(lines: list[str], start_index: int) -> tuple[list[str], int]:
-    """Collect consecutive blockquote lines starting from start_index. Returns (quote_lines, end_index)."""
-    quote_lines = []
-    i = start_index
-    while i < len(lines) and _is_blockquote_line(lines[i]):
-        quote_lines.append(lines[i].lstrip('> ').rstrip())
-        i += 1
-    return quote_lines, i
-
-def _process_blockquote_section(lines: list[str], i: int, target_block_id: str) -> tuple[list[str], int, bool]:
-    """Process a blockquote section and check if it matches the target block ID."""
-    quote_lines, i = _collect_blockquote_lines(lines, i)
-    
-    # Check if the next line is the block ID we're looking for
-    if i < len(lines) and lines[i].strip() == target_block_id:
-        # This is the quote we need to unwrap
-        quote_text = ' '.join(quote_lines)
-        return [f'"{quote_text}"'], i + 1, True  # Skip the block ID line
-    else:
-        # Not the right quote, keep original lines
-        original_lines = []
-        for j in range(i - len(quote_lines), i):
-            original_lines.append(lines[j])
-        return original_lines, i, False
-
 def unwrap_quote_in_source(source_file_path: str, block_id: str, dry_run: bool = False) -> bool:
     """Unwraps a quote in the source file by removing blockquote formatting and block ID."""
     if not os.path.exists(source_file_path):
@@ -215,6 +162,35 @@ def unwrap_quote_in_source(source_file_path: str, block_id: str, dry_run: bool =
         
     except Exception:
         return False
+
+def _is_blockquote_line(line: str) -> bool:
+    """Check if a line starts a blockquote."""
+    return line.strip().startswith('>')
+
+def _collect_blockquote_lines(lines: list[str], start_index: int) -> tuple[list[str], int]:
+    """Collect consecutive blockquote lines starting from start_index. Returns (quote_lines, end_index)."""
+    quote_lines = []
+    i = start_index
+    while i < len(lines) and _is_blockquote_line(lines[i]):
+        quote_lines.append(lines[i].lstrip('> ').rstrip())
+        i += 1
+    return quote_lines, i
+
+def _process_blockquote_section(lines: list[str], i: int, target_block_id: str) -> tuple[list[str], int, bool]:
+    """Process a blockquote section and check if it matches the target block ID."""
+    quote_lines, i = _collect_blockquote_lines(lines, i)
+    
+    # Check if the next line is the block ID we're looking for
+    if i < len(lines) and lines[i].strip() == target_block_id:
+        # This is the quote we need to unwrap
+        quote_text = ' '.join(quote_lines)
+        return [f'"{quote_text}"'], i + 1, True  # Skip the block ID line
+    else:
+        # Not the right quote, keep original lines
+        original_lines = []
+        for j in range(i - len(quote_lines), i):
+            original_lines.append(lines[j])
+        return original_lines, i, False
 
 def _has_block_id_at_index(lines: list[str], index: int) -> bool:
     """Check if there's a block ID at the given index."""
@@ -267,16 +243,18 @@ def _replace_blockquote(lines, start, end, new_quote_text, block_id):
     formatted_new = _format_quote_text(new_quote_text).split('\n')
     return lines[:start] + formatted_new + [block_id] + lines[end+1:]
 
-def frontmatter_str_to_dict(frontmatter: str) -> dict:
-    """Converts a YAML frontmatter string to a Python dict."""
-    try:
-        return yaml.safe_load(frontmatter) or {}
-    except Exception:
-        return {}
-
-def frontmatter_dict_to_str(frontmatter_dict: dict) -> str:
-    """Converts a Python dict to a YAML frontmatter string."""
-    try:
-        return yaml.safe_dump(frontmatter_dict, sort_keys=False).strip()
-    except Exception:
-        return "" 
+def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "Notes", vault_root: str = "") -> str:
+    """Creates an Obsidian URI in the correct format."""
+    # Remove .md extension
+    if source_file.endswith('.md'):
+        source_file = source_file[:-3]
+    # If vault_root is provided, make path relative
+    if vault_root:
+        rel_path = os.path.relpath(source_file, vault_root)
+    else:
+        rel_path = source_file
+    # Normalize to forward slashes
+    rel_path = rel_path.replace(os.sep, '/')
+    encoded_file = quote(rel_path)
+    encoded_block = quote(block_id)
+    return f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}" 

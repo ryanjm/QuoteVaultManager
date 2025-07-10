@@ -5,10 +5,7 @@ Source file synchronization logic for processing individual source files.
 import os
 from typing import Dict, Any, Optional
 from .quote_parser import extract_blockquotes_with_ids, validate_block_ids
-from .quote_writer import (
-    write_quote_file, update_quote_file_if_changed, delete_quote_file,
-    find_quote_files_for_source, ensure_block_id_in_source, create_quote_filename
-)
+# All quote file utilities now live on DestinationFile or DestinationVault
 from .file_utils import get_book_title_from_path, get_vault_name_from_path
 from .models.source_file import SourceFile
 from .models.destination_file import DestinationFile, Quote
@@ -156,7 +153,9 @@ def _assign_missing_block_ids(source_file, quotes_with_ids, block_id_map, next_b
         if block_id is None:
             new_block_id = f'^Quote{next_block_num:03d}'
             next_block_num += 1
-            ensure_block_id_in_source(source_file, quote_text, new_block_id, dry_run)
+            # All quote file utilities now live on DestinationFile or DestinationVault
+            from .models.destination_file import DestinationFile
+            DestinationFile.ensure_block_id_in_source(source_file, quote_text, new_block_id, dry_run)
             results['block_ids_added'] += 1
             updated_quotes.append((quote_text, new_block_id))
             added = True
@@ -175,7 +174,7 @@ def _sync_quote_files(
         if block_id is None:
             results['errors'].append(f"Quote at index {idx} has no block ID after assignment")
             continue
-        filename = create_quote_filename(book_title, block_id, quote_text)
+        filename = DestinationFile.create_quote_filename(book_title, block_id, quote_text)
         quote_file_path = os.path.join(destination_path, book_title, filename)
         if os.path.exists(quote_file_path):
             dest = DestinationFile.from_file(quote_file_path)
@@ -208,8 +207,10 @@ def _sync_quote_files(
 def _remove_orphaned_quote_files(source_file, destination_path, block_id_map, dry_run, results):
     """Remove quote files that no longer have a corresponding blockquote in the source file."""
     from .models.destination_file import DestinationFile
+    from .models.destination_vault import DestinationVault
     existing_block_ids = set(block_id_map.values())
-    existing_quote_files = find_quote_files_for_source(destination_path, source_file)
+    vault = DestinationVault(destination_path)
+    existing_quote_files = vault.find_quote_files_for_source(source_file)
     for quote_file in existing_quote_files:
         filename = os.path.basename(quote_file)
         if ' - Quote' in filename:

@@ -1,14 +1,14 @@
 from .source_file import SourceFile
 from typing import List
 import os
+from .base_vault import BaseVault
 
-class SourceVault:
+class SourceVault(BaseVault):
     """Represents a collection of source files in a vault."""
     def __init__(self, directory: str):
-        self.directory = directory
-        self.source_files: List[SourceFile] = self._load_source_files()
+        super().__init__(directory)
 
-    def _load_source_files(self) -> List[SourceFile]:
+    def _load_files(self) -> List[SourceFile]:
         """Loads all markdown source files from the directory that have sync_quotes: true in frontmatter."""
         files = []
         from quote_vault_manager.file_utils import has_sync_quotes_flag
@@ -23,20 +23,20 @@ class SourceVault:
     def validate_all(self) -> List[str]:
         """Validates block IDs in all source files and returns a list of errors."""
         errors = []
-        for source in self.source_files:
+        for source in self.files:
             errors.extend(source.validate_block_ids())
         return errors
 
     def assign_block_ids_all(self, dry_run: bool = False) -> int:
         """Assigns missing block IDs in all source files. Returns total block IDs added."""
         total = 0
-        for source in self.source_files:
+        for source in self.files:
             total += source.assign_missing_block_ids(dry_run)
         return total
 
     def save_all(self):
         """Saves all source files."""
-        for source in self.source_files:
+        for source in self.files:
             source.save()
 
     def sync_to_destination(self, destination_vault, dry_run: bool = False) -> dict:
@@ -51,7 +51,7 @@ class SourceVault:
             'total_quotes_deleted': 0,
             'errors': []
         }
-        for source in self.source_files:
+        for source in self.files:
             file_results = sync_source_file(source.path, destination_vault.directory, dry_run, self.directory)
             results['source_files_processed'] += 1
             results['total_quotes_processed'] += file_results['quotes_processed']
