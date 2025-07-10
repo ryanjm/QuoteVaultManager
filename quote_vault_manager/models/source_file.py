@@ -110,3 +110,38 @@ class SourceFile:
         
         with open(self.path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(lines) + '\n') 
+
+    @staticmethod
+    def build_source_file_path(source_path: str, source_vault_path: str) -> Optional[str]:
+        """Build full path to source file."""
+        import os
+        if not isinstance(source_path, str) or not source_path:
+            return None
+        if source_vault_path and isinstance(source_vault_path, str):
+            return os.path.join(source_vault_path, source_path)
+        return source_path
+
+    @classmethod
+    def process_edited_quote(
+        cls,
+        file_path: str,
+        source_path: Optional[str],
+        block_id: Optional[str],
+        new_quote_text: Optional[str],
+        fm: dict,
+        dry_run: bool,
+        source_vault_path: str
+    ) -> bool:
+        if not (source_path and block_id and new_quote_text):
+            return False
+        source_file_path = cls.build_source_file_path(source_path, source_vault_path)
+        if not isinstance(source_file_path, str) or not source_file_path:
+            return False
+        source = cls.from_file(source_file_path)
+        updated = source.update_quote(block_id, new_quote_text)
+        if updated and not dry_run:
+            source.save()
+            from quote_vault_manager.models.destination_file import DestinationFile
+            dest = DestinationFile.from_file(file_path)
+            dest.update_frontmatter({'edited': False})
+        return updated 

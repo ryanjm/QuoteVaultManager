@@ -80,10 +80,9 @@ def _create_quote_content_template(quote_text: str, source_file: str, block_id: 
 def create_quote_content(quote_text: str, source_file: str, block_id: str, vault_name: str = "Notes", vault_root: str = "") -> str:
     """Creates the content for a quote file including frontmatter and source link."""
     from . import VERSION
-    
     default_frontmatter = f"""delete: false
 favorite: false
-source_path: "{os.path.basename(source_file)}"
+edited: false
 version: "{VERSION}"
 """
     return _create_quote_content_template(quote_text, source_file, block_id, default_frontmatter, vault_name, vault_root)
