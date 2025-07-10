@@ -88,58 +88,47 @@ class SourceFile:
                 return True
         return False
 
-    def update_quote(self, block_id: str, new_text: Optional[str]) -> bool:
-        """Updates the text of a quote by block ID. Returns True if updated, False if not found."""
-        for quote in self.quotes:
-            if quote.block_id == block_id:
-                quote.text = new_text
-                return True
+    def update_quote(self, quote: Quote, new_text: Optional[str]) -> bool:
+        """Updates the text of a quote and marks it for editing."""
+        if quote:
+            quote.text = new_text
+            quote.needs_edit = True
+            return True
         return False
 
-    def unwrap_quote(self, block_id: str) -> bool:
-        """Unwraps a quote by converting it to regular text (wrapped in quotes). Returns True if unwrapped, False if not found."""
-        for quote in self.quotes:
-            if quote.block_id == block_id:
-                # Convert to regular text by wrapping in quotes
-                quote.text = f'"{quote.text}"'
-                quote.block_id = None  # Remove the block ID
-                return True
+    def unwrap_quote(self, quote: Quote) -> bool:
+        """Unwraps a quote and marks it for unwrapping."""
+        if quote:
+            quote.needs_unwrap_block_id = quote.block_id
+            quote.text = f'"{quote.text}"'
+            quote.block_id = None
+            quote.needs_unwrap = True
+            return True
         return False
 
-    def save(self):
-        """Saves the current quotes (with block IDs) back to the source file, preserving frontmatter."""
-        from quote_vault_manager.quote_writer import read_quote_file_content, frontmatter_str_to_dict
-        # Read existing content to preserve frontmatter
-        frontmatter_str, _ = read_quote_file_content(self.path)
-        frontmatter = frontmatter_str_to_dict(frontmatter_str) if frontmatter_str else {}
-        
-        # Build new content with preserved frontmatter
-        lines = []
-        if frontmatter:
-            from quote_vault_manager.quote_writer import frontmatter_dict_to_str
-            frontmatter_str = frontmatter_dict_to_str(frontmatter)
-            lines.append('---')
-            lines.append(frontmatter_str)
-            lines.append('---')
-            lines.append('')
-        
-        # Add quotes and block IDs
+    def save(self, dry_run: bool = False):
+        """Propagates edits and unwrapping for quotes with flags set, using in-place file updates only."""
         for quote in self.quotes:
-            if quote.text:
-                for line in quote.text.split('\n'):
-                    lines.append(f'> {line}')
-                if quote.block_id:
-                    lines.append(quote.block_id)
-        
-        with open(self.path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines) + '\n') 
+            if getattr(quote, "needs_edit", False):
+                if quote.block_id is not None and quote.text is not None:
+                    self.overwrite_quote_in_source(self.path, quote.block_id, quote.text, dry_run)
+                quote.needs_edit = False
+            if getattr(quote, "needs_unwrap", False):
+                block_id_to_unwrap = getattr(quote, "needs_unwrap_block_id", None)
+                if block_id_to_unwrap is not None:
+                    self.unwrap_quote_in_source(self.path, block_id_to_unwrap, dry_run)
+                quote.needs_unwrap = False
+                quote.needs_unwrap_block_id = None
 
     @staticmethod
     def build_source_file_path(source_path: str, source_vault_path: str) -> Optional[str]:
-        """Build full path to source file."""
+        """Build full path to source file, ensuring .md extension."""
         import os
         if not isinstance(source_path, str) or not source_path:
             return None
+        # Ensure .md extension
+        if not source_path.endswith('.md'):
+            source_path = source_path + '.md'
         if source_vault_path and isinstance(source_vault_path, str):
             return os.path.join(source_vault_path, source_path)
         return source_path
@@ -272,6 +261,12 @@ class SourceFile:
                     return start, end
             i += 1
         return None, None
+
+    @staticmethod
+    def _format_quote_text(quote_text: str) -> str:
+        """Format quote text with proper blockquote formatting."""
+        quote_lines = quote_text.split('\n')
+        return '\n'.join(f'> {line}' for line in quote_lines)
 
     @staticmethod
     def _replace_blockquote(lines: list, start: int, end: int, new_quote_text: str, block_id: str):

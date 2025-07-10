@@ -1,13 +1,16 @@
 from typing import Optional
 
 class Quote:
-    """Represents a quote with text and block_id."""
-    def __init__(self, text: Optional[str], block_id: Optional[str]):
+    """Represents a quote with text, block_id, and change flags."""
+    def __init__(self, text: Optional[str], block_id: Optional[str], needs_edit: bool = False, needs_unwrap: bool = False, needs_unwrap_block_id: Optional[str] = None):
         self.text = text
         self.block_id = block_id
+        self.needs_edit = needs_edit
+        self.needs_unwrap = needs_unwrap
+        self.needs_unwrap_block_id = needs_unwrap_block_id
 
     def __repr__(self):
-        return f"Quote(text={self.text!r}, block_id={self.block_id!r})"
+        return f"Quote(text={self.text!r}, block_id={self.block_id!r}, needs_edit={self.needs_edit!r}, needs_unwrap={self.needs_unwrap!r}, needs_unwrap_block_id={self.needs_unwrap_block_id!r})"
 
     def __eq__(self, other):
         if not isinstance(other, Quote):

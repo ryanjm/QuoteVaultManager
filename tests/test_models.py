@@ -23,9 +23,44 @@ def test_source_file_from_file_and_save(tmp_path):
     assert len(source.quotes) == 2
     assert source.quotes[0].text == "A quote"
     assert source.quotes[0].block_id == "^Quote001"
-    # Test save
+    # Test update_quote (edit first quote)
+    q1 = source.quotes[0]
+    source.update_quote(q1, "Edited quote")
     source.save()
-    assert file_path.read_text() == content
+    with open(file_path, 'r') as f:
+        updated_content = f.read()
+    assert "> Edited quote" in updated_content
+    assert "^Quote001" in updated_content
+    # Test unwrap_quote (unwrap second quote)
+    q2 = source.quotes[1]
+    source.unwrap_quote(q2)
+    source.save()
+    with open(file_path, 'r') as f:
+        unwrapped_content = f.read()
+    assert '"Another quote"' in unwrapped_content
+    assert "^Quote002" not in unwrapped_content
+
+def test_source_file_preserves_non_quote_content(tmp_path):
+    file_path = tmp_path / "source.md"
+    content = """# Header\n\nSome intro text.\n\n> A quote\n^Quote001\n\nSome middle text.\n\n> Another quote\n^Quote002\n\nFooter text."""
+    file_path.write_text(content)
+    source = SourceFile.from_file(str(file_path))
+    # Edit first quote
+    q1 = source.quotes[0]
+    source.update_quote(q1, "Changed quote")
+    # Unwrap second quote
+    q2 = source.quotes[1]
+    source.unwrap_quote(q2)
+    source.save()
+    with open(file_path, 'r') as f:
+        result = f.read()
+    assert '# Header' in result
+    assert 'Some intro text.' in result
+    assert '> Changed quote' in result
+    assert 'Some middle text.' in result
+    assert '"Another quote"' in result
+    assert 'Footer text.' in result
+    assert '^Quote002' not in result
 
 def test_destination_file_from_file_and_save(tmp_path):
     file_path = tmp_path / "dest.md"

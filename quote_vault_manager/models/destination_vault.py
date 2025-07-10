@@ -53,7 +53,15 @@ class DestinationVault(BaseVault):
             if not block_id:
                 continue
             source = SourceFile.from_file(source_file_path)
-            unwrapped = source.unwrap_quote(block_id)
+            # Find the Quote object by block_id
+            quote_obj = None
+            for q in source.quotes:
+                if q.block_id == block_id:
+                    quote_obj = q
+                    break
+            if quote_obj is None:
+                continue
+            unwrapped = source.unwrap_quote(quote_obj)
             if unwrapped:
                 if not dry_run:
                     source.save()
@@ -71,7 +79,14 @@ class DestinationVault(BaseVault):
         import os
         quote_files = []
         source_filename = os.path.basename(source_file)
-        for dest in self.files:
-            if dest.path and source_filename in os.path.basename(dest.path):
-                quote_files.append(dest.path)
+        source_name = source_filename.replace('.md', '')
+        
+        # Look for quote files in the subdirectory named after the source file
+        source_dir = os.path.join(self.directory, source_name)
+        if os.path.exists(source_dir):
+            for root, _, files in os.walk(source_dir):
+                for file in files:
+                    if file.endswith('.md'):
+                        quote_files.append(os.path.join(root, file))
+        
         return quote_files 

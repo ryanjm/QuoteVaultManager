@@ -9,7 +9,7 @@ from quote_vault_manager.file_utils import (
     get_book_title_from_path
 )
 from quote_vault_manager.source_sync import sync_source_file
-from quote_vault_manager.delete_processor import process_delete_flags
+from quote_vault_manager.models.destination_vault import DestinationVault
 
 def test_setup_logging_and_log_sync_action_and_log_error():
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -196,30 +196,25 @@ source_path: "test_source.md"
             f.write(quote_content)
         
         # Test processing delete flags (dry run)
-        results = process_delete_flags(os.path.join(temp_dir, "quotes"), temp_dir, dry_run=True)
-        
+        vault = DestinationVault(os.path.join(temp_dir, "quotes"))
+        results = vault.delete_flagged(temp_dir, dry_run=True)
         assert results['quotes_unwrapped'] == 1
-        
         # Check that source file wasn't actually modified in dry run
         with open(source_file, 'r') as f:
             content = f.read()
             assert "^Quote001" in content
             assert "> Quote to be deleted" in content
-        
         # Test actual processing
-        results = process_delete_flags(os.path.join(temp_dir, "quotes"), temp_dir, dry_run=False)
-        
+        vault = DestinationVault(os.path.join(temp_dir, "quotes"))
+        results = vault.delete_flagged(temp_dir, dry_run=False)
         assert results['quotes_unwrapped'] == 1
-        
         # Check that source file was modified
         with open(source_file, 'r') as f:
             content = f.read()
             assert "^Quote001" not in content
             assert '"Quote to be deleted"' in content
-        
         # Check that quote file was deleted
         assert not os.path.exists(quote_file)
-        
         print("Delete flag processing tests passed.")
 
 def test_sync_vaults():
@@ -451,13 +446,54 @@ sync_quotes: true
         
         print("Unique block ID assignment tests passed.")
 
+def test_sync_vaults_delete_flagged(tmp_path):
+    import shutil
+    from quote_vault_manager.sync import sync_vaults
+    # Setup source vault and file
+    source_vault = tmp_path / "source"
+    source_vault.mkdir()
+    source_file = source_vault / "book.md"
+    source_content = "> A quote to delete\n^Quote001\n> Another quote\n^Quote002\n"
+    source_file.write_text(source_content)
+    # Setup destination vault and quote file with delete: true
+    dest_vault = tmp_path / "dest"
+    quote_dir = dest_vault / "book"
+    quote_dir.mkdir(parents=True)
+    quote_file = quote_dir / "book - Quote001 - A quote to delete.md"
+    quote_content = """---
+delete: true
+favorite: false
+source_path: "book.md"
+---
+
+> A quote to delete
+
+**Source:** [book](obsidian://open?vault=Notes&file=book%23%5EQuote001)
+"""
+    quote_file.write_text(quote_content)
+    # Dry-run sync
+    config = {'source_vault_path': str(source_vault), 'destination_vault_path': str(dest_vault)}
+    results = sync_vaults(config, dry_run=True)
+    # File should still exist, source should be unchanged
+    assert quote_file.exists()
+    assert "> A quote to delete" in source_file.read_text()
+    assert '^Quote001' in source_file.read_text()
+    assert results['total_quotes_unwrapped'] == 1
+    # Real sync
+    results = sync_vaults(config, dry_run=False)
+    # File should be deleted, source should be unwrapped
+    assert not quote_file.exists()
+    src_text = source_file.read_text()
+    assert '"A quote to delete"' in src_text
+    assert '^Quote001' not in src_text
+    assert results['total_quotes_unwrapped'] == 1
+
 if __name__ == "__main__":
     test_setup_logging_and_log_sync_action_and_log_error()
     test_has_sync_quotes_flag()
     test_get_markdown_files()
     test_get_book_title_from_path()
     test_sync_source_file()
-    test_process_delete_flags()
     test_sync_vaults()
     test_skip_files_without_sync_quotes_flag()
     test_orphaned_quote_detection_and_removal()

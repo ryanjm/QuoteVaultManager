@@ -77,7 +77,7 @@ class DestinationFile:
         # Look for a line like: **Source:** [Book](obsidian://open?vault=Notes&file=...%23^QuoteNNN)
         match = re.search(r'\(obsidian://open\?vault=[^&]+&file=([^%#)]+)', content)
         if match:
-            encoded_path = match.group(2)
+            encoded_path = match.group(1)
             return unquote(encoded_path)
         return ""
 

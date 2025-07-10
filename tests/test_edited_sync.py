@@ -2,7 +2,7 @@ import os
 import shutil
 import pytest
 from quote_vault_manager.source_sync import sync_edited_quotes
-from quote_vault_manager.quote_writer import frontmatter_dict_to_str
+from quote_vault_manager.models.destination_file import DestinationFile
 
 def make_source_file(tmp_path, content, name="Book.md"):
     src = tmp_path / name
@@ -11,11 +11,16 @@ def make_source_file(tmp_path, content, name="Book.md"):
 
 def make_quote_file(tmp_path, frontmatter, quote_text, name="Book - Quote001 - Test.md"):
     qf = tmp_path / name
-    fm_str = frontmatter_dict_to_str(frontmatter)
+    fm_str = DestinationFile.frontmatter_dict_to_str(frontmatter)
     # Prefix every line of quote_text with '>'
     quote_lines = quote_text.split('\n')
     formatted_quote = '\n'.join(f'> {line}' for line in quote_lines)
-    qf.write_text(f"---\n{fm_str}\n---\n{formatted_quote}\n\n**Source:** [Book](obsidian://open?vault=Notes&file=Book%23^Quote001)", encoding="utf-8")
+    
+    # Get the source file name from frontmatter
+    source_file = frontmatter.get('source_path', 'Book.md')
+    source_name = source_file.replace('.md', '')
+    
+    qf.write_text(f"---\n{fm_str}\n---\n{formatted_quote}\n\n**Source:** [{source_name}](obsidian://open?vault=Notes&file={source_name}%23^Quote001)", encoding="utf-8")
     return str(qf)
 
 def read_file(path):
@@ -26,13 +31,16 @@ def test_edited_quote_updates_source_and_resets_flag(tmp_path):
     # Setup source file with original quote
     orig = "> Old quote\n^Quote001\nOther text"
     src_path = make_source_file(tmp_path, orig)
+    
     # Setup quote file with edited: true and new quote
     qvault = tmp_path / "vault"
     qvault.mkdir()
     frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
     quote_path = make_quote_file(qvault, frontmatter, "New quote")
+    
     # Run sync
     updated = sync_edited_quotes(str(qvault), dry_run=False, source_vault_path=str(tmp_path))
+    
     # Source file updated
     src_content = read_file(src_path)
     assert "> New quote" in src_content

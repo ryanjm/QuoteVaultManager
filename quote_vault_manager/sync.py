@@ -6,7 +6,6 @@ from typing import Dict, Any
 from .config import load_config, ConfigError
 from .file_utils import has_sync_quotes_flag, get_markdown_files
 from .transformation_manager import apply_transformations_to_all_quotes
-from .delete_processor import process_delete_flags
 from .source_sync import sync_source_file, sync_edited_quotes
 from .models.source_vault import SourceVault
 from .models.destination_vault import DestinationVault
@@ -76,13 +75,6 @@ def _apply_transformations(destination_vault_path: str, dry_run: bool) -> None:
             print(f"🔄 [DRY-RUN] {files_updated} quote files would be updated to version {VERSION}")
         else:
             print(f"🔄 {files_updated} quote files updated to version {VERSION}")
-
-
-def _process_deletions(destination_vault_path: str, source_vault_path: str, dry_run: bool, results: Dict[str, Any]) -> None:
-    """Process delete flags and update results."""
-    delete_results = process_delete_flags(destination_vault_path, source_vault_path, dry_run)
-    results['total_quotes_unwrapped'] = delete_results['quotes_unwrapped']
-    results['errors'].extend(delete_results['errors'])
 
 
 def _process_source_files(source_vault_path: str, destination_vault_path: str, dry_run: bool, results: Dict[str, Any]) -> None:

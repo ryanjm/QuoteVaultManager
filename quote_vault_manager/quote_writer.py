@@ -245,16 +245,27 @@ def _replace_blockquote(lines, start, end, new_quote_text, block_id):
 
 def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "Notes", vault_root: str = "") -> str:
     """Creates an Obsidian URI in the correct format."""
-    # Remove .md extension
     if source_file.endswith('.md'):
         source_file = source_file[:-3]
-    # If vault_root is provided, make path relative
     if vault_root:
         rel_path = os.path.relpath(source_file, vault_root)
     else:
         rel_path = source_file
-    # Normalize to forward slashes
     rel_path = rel_path.replace(os.sep, '/')
     encoded_file = quote(rel_path)
     encoded_block = quote(block_id)
-    return f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}" 
+    return f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}"
+
+def frontmatter_str_to_dict(frontmatter: str) -> dict:
+    """Convert frontmatter string to dictionary."""
+    try:
+        return yaml.safe_load(frontmatter) or {}
+    except Exception:
+        return {}
+
+def frontmatter_dict_to_str(frontmatter_dict: dict) -> str:
+    """Convert frontmatter dictionary to string."""
+    try:
+        return yaml.safe_dump(frontmatter_dict, sort_keys=False).strip()
+    except Exception:
+        return "" 

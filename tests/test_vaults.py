@@ -14,7 +14,7 @@ def test_source_vault_load_and_save(tmp_path):
     file1.write_text("---\nsync_quotes: true\n---\n\n> Quote 1\n^Quote001\n")
     file2.write_text("---\nsync_quotes: true\n---\n\n> Quote 2\n^Quote002\n")
     vault = SourceVault(str(tmp_path))
-    assert len(vault.source_files) == 2
+    assert len(vault.files) == 2
     # Test batch save (should not change content)
     vault.save_all()
     assert file1.read_text() == "---\nsync_quotes: true\n---\n\n> Quote 1\n^Quote001\n"
@@ -27,7 +27,7 @@ def test_destination_vault_load_and_save(tmp_path):
     file1.write_text("---\nblock_id: ^Quote001\n---\n\n> Quote 1\n^Quote001\n")
     file2.write_text("---\nblock_id: ^Quote002\n---\n\n> Quote 2\n^Quote002\n")
     vault = DestinationVault(str(tmp_path))
-    assert len(vault.destination_files) == 2
+    assert len(vault.files) == 2
     # Test batch save (should not change content)
     vault.save_all()
     assert file1.read_text() == "---\nblock_id: ^Quote001\n---\n\n> Quote 1\n^Quote001\n"
