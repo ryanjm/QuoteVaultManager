@@ -5,7 +5,7 @@ Main synchronization orchestrator for the quote vault manager.
 from typing import Dict, Any
 from .config import load_config, ConfigError
 from .file_utils import has_sync_quotes_flag, get_markdown_files
-from .transformation_manager import apply_transformations_to_all_quotes
+from .transformation_manager import transformation_manager
 from .source_sync import sync_source_file
 from .models.source_vault import SourceVault
 from .models.destination_vault import DestinationVault
@@ -69,7 +69,7 @@ def sync_vaults(config: Dict[str, str], dry_run: bool = False) -> Dict[str, Any]
 
 def _apply_transformations(destination_vault_path: str, dry_run: bool) -> None:
     """Apply transformations to all quote files and notify user of updates."""
-    files_updated = apply_transformations_to_all_quotes(destination_vault_path, dry_run=dry_run)
+    files_updated = transformation_manager.apply_transformations_to_all_quotes(destination_vault_path, dry_run=dry_run)
     if files_updated:
         if dry_run:
             print(f"🔄 [DRY-RUN] {files_updated} quote files would be updated to version {VERSION}")

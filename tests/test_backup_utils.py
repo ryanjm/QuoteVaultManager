@@ -152,10 +152,12 @@ version: "V0.0"
 **Source:** [test](link)
 """)
         
-        from quote_vault_manager.transformation_manager import apply_transformations_to_all_quotes
+        from quote_vault_manager.transformation_manager import TransformationManager, default_transformations, default_backup_utils
+        from quote_vault_manager import VERSION
+        transformation_manager = TransformationManager(VERSION, default_backup_utils, default_transformations)
         
         # Apply transformations (should create backup)
-        files_updated = apply_transformations_to_all_quotes(temp_dir, dry_run=False)
+        files_updated = transformation_manager.apply_transformations_to_all_quotes(temp_dir, dry_run=False)
         
         assert files_updated == 1
         

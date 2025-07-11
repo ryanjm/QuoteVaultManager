@@ -2,10 +2,15 @@ import pytest
 from quote_vault_manager.transformations import v0_1_add_version
 from quote_vault_manager.transformations import v0_2_add_random_note_link
 from quote_vault_manager.transformations import v0_3_add_edited_flag
-from quote_vault_manager.transformation_manager import apply_transformations_to_quote_file
+from quote_vault_manager.transformation_manager import TransformationManager
 from quote_vault_manager import VERSION
 import tempfile
 import os
+
+@pytest.fixture(scope="module")
+def transformation_manager():
+    from quote_vault_manager.transformation_manager import default_transformations, default_backup_utils
+    return TransformationManager(VERSION, default_backup_utils, default_transformations)
 
 def test_adds_version_if_missing():
     note = {'frontmatter': {}}
@@ -53,7 +58,7 @@ def test_does_not_overwrite_existing_edited_flag():
     assert updated['frontmatter']['edited'] is True
     assert updated['frontmatter']['version'] == VERSION
 
-def test_transformation_manager_updates_version_to_latest():
+def test_transformation_manager_updates_version_to_latest(transformation_manager):
     """Test that transformation manager updates version to latest after applying transformations."""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
         # Create a quote file with V0.0 version
@@ -72,7 +77,7 @@ version: "V0.0"
     
     try:
         # Apply transformations
-        was_updated = apply_transformations_to_quote_file(file_path, dry_run=False)
+        was_updated = transformation_manager.apply_transformations_to_quote_file(file_path, dry_run=False)
         assert was_updated == True
         
         # Read the file back and check version
@@ -87,7 +92,7 @@ version: "V0.0"
     finally:
         os.unlink(file_path)
 
-def test_transformation_manager_updates_version_to_latest_dry_run():
+def test_transformation_manager_updates_version_to_latest_dry_run(transformation_manager):
     """Test that transformation manager would update version to latest in dry run."""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
         # Create a quote file with V0.0 version
@@ -106,7 +111,7 @@ version: "V0.0"
     
     try:
         # Apply transformations in dry run
-        was_updated = apply_transformations_to_quote_file(file_path, dry_run=True)
+        was_updated = transformation_manager.apply_transformations_to_quote_file(file_path, dry_run=True)
         assert was_updated == True
         
         # Read the file back - should be unchanged in dry run
@@ -121,7 +126,7 @@ version: "V0.0"
     finally:
         os.unlink(file_path)
 
-def test_transformation_manager_skips_already_updated_files():
+def test_transformation_manager_skips_already_updated_files(transformation_manager):
     """Test that transformation manager skips files that already have latest version."""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
         # Create a quote file with latest version
@@ -142,7 +147,7 @@ version: "{VERSION}"
     
     try:
         # Apply transformations
-        was_updated = apply_transformations_to_quote_file(file_path, dry_run=False)
+        was_updated = transformation_manager.apply_transformations_to_quote_file(file_path, dry_run=False)
         assert was_updated == False
         
         # Read the file back - should be unchanged
