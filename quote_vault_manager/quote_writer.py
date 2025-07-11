@@ -5,29 +5,6 @@ import re
 import yaml
 from quote_vault_manager.models.destination_file import DestinationFile
 
-def find_quote_files_for_source(destination_path: str, source_file: str) -> list[str]:
-    """Finds all quote files that reference a specific source file."""
-    quote_files = []
-    
-    if not os.path.exists(destination_path):
-        return quote_files
-    
-    # Extract just the filename from the source_file path
-    source_filename = os.path.basename(source_file)
-    
-    for root, dirs, files in os.walk(destination_path):
-        for file in files:
-            if file.endswith('.md'):
-                file_path = os.path.join(root, file)
-                try:
-                    frontmatter, _ = DestinationFile.read_quote_file_content(file_path)
-                    if frontmatter and f'source_path: "{source_filename}"' in frontmatter:
-                        quote_files.append(file_path)
-                except Exception:
-                    continue
-    
-    return quote_files
-
 def unwrap_quote_in_source(source_file_path: str, block_id: str, dry_run: bool = False) -> bool:
     """Unwraps a quote in the source file by removing blockquote formatting and block ID."""
     if not os.path.exists(source_file_path):

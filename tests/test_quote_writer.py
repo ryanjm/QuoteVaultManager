@@ -2,8 +2,8 @@ import tempfile
 import os
 from quote_vault_manager.models.destination_file import DestinationFile
 from quote_vault_manager.models.source_file import SourceFile
+from quote_vault_manager.models.destination_vault import DestinationVault
 from quote_vault_manager.quote_writer import (
-    find_quote_files_for_source,
     unwrap_quote_in_source
 )
 
@@ -134,9 +134,11 @@ source_path: "test.md"
 def test_find_quote_files_for_source():
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create test quote files
-        book_dir = os.path.join(temp_dir, "Test Book")
-        os.makedirs(book_dir, exist_ok=True)
-        
+        test_dir = os.path.join(temp_dir, "test")
+        other_dir = os.path.join(temp_dir, "other")
+        os.makedirs(test_dir, exist_ok=True)
+        os.makedirs(other_dir, exist_ok=True)
+
         # Create quote file 1
         quote1_content = """---
 delete: false
@@ -148,10 +150,10 @@ source_path: "test.md"
 
 **Source:** [test](obsidian://open?vault=Notes&file=test%23%5EQuote001)
 """
-        quote1_path = os.path.join(book_dir, "Test Book - Quote001 - Quote 1.md")
+        quote1_path = os.path.join(test_dir, "Test Book - Quote001 - Quote 1.md")
         with open(quote1_path, 'w') as f:
             f.write(quote1_content)
-        
+
         # Create quote file 2 (different source)
         quote2_content = """---
 delete: false
@@ -163,22 +165,23 @@ source_path: "other.md"
 
 **Source:** [other](obsidian://open?vault=Notes&file=other%23%5EQuote001)
 """
-        quote2_path = os.path.join(book_dir, "Test Book - Quote002 - Quote 2.md")
+        quote2_path = os.path.join(other_dir, "Test Book - Quote002 - Quote 2.md")
         with open(quote2_path, 'w') as f:
             f.write(quote2_content)
-        
+
         # Test finding files for "test.md"
-        found_files = find_quote_files_for_source(temp_dir, "test.md")
+        vault = DestinationVault(temp_dir)
+        found_files = vault.find_quote_files_for_source("test.md")
         assert len(found_files) == 1
         assert quote1_path in found_files
         
         # Test finding files for "other.md"
-        found_files = find_quote_files_for_source(temp_dir, "other.md")
+        found_files = vault.find_quote_files_for_source("other.md")
         assert len(found_files) == 1
         assert quote2_path in found_files
         
         # Test finding files for non-existent source
-        found_files = find_quote_files_for_source(temp_dir, "nonexistent.md")
+        found_files = vault.find_quote_files_for_source("nonexistent.md")
         assert len(found_files) == 0
         
         print("Quote file finding tests passed.")
