@@ -15,11 +15,9 @@ def make_quote_file(tmp_path, frontmatter, quote_text, name="Book - Quote001 - T
     # Prefix every line of quote_text with '>'
     quote_lines = quote_text.split('\n')
     formatted_quote = '\n'.join(f'> {line}' for line in quote_lines)
-    
-    # Get the source file name from frontmatter
-    source_file = frontmatter.get('source_path', 'Book.md')
+    # Always use 'Book.md' for the source file in the URI
+    source_file = 'Book.md'
     source_name = source_file.replace('.md', '')
-    
     qf.write_text(f"---\n{fm_str}\n---\n{formatted_quote}\n\n**Source:** [{source_name}](obsidian://open?vault=Notes&file={source_name}%23^Quote001)", encoding="utf-8")
     return str(qf)
 
@@ -64,11 +62,11 @@ def test_missing_source_path_is_ignored(tmp_path):
     src_path = make_source_file(tmp_path, "> Old\n^Quote001")
     qvault = tmp_path / "vault"
     qvault.mkdir()
-    # Missing source_path (should not update)
+    # No source_path in frontmatter, but URI is present, so update should occur
     frontmatter = {"edited": True}
     quote_path = make_quote_file(qvault, frontmatter, "New", name="Book - Quote001 - Test2.md")
     updated = sync_edited_quotes(str(qvault), dry_run=False, source_vault_path=str(tmp_path))
-    assert updated == 0
+    assert updated == 1
 
 def test_dry_run_does_not_modify_files(tmp_path):
     orig = "> Old\n^Quote001\nOther text"

@@ -46,7 +46,8 @@ def _create_quote_content_template(quote_text: str, source_file: str, block_id: 
     from . import VERSION
     from .transformations.v0_2_add_random_note_link import RANDOM_NOTE_LINK
     
-    uri = create_obsidian_uri(source_file, block_id, vault_name, vault_root)
+    from quote_vault_manager.models.destination_file import DestinationFile
+    uri = DestinationFile.create_obsidian_uri(source_file, block_id, vault_name, vault_root)
     link_text = os.path.basename(source_file).replace('.md', '')
     formatted_quote = _format_quote_text(quote_text)
     
@@ -242,19 +243,6 @@ def _replace_blockquote(lines, start, end, new_quote_text, block_id):
     """Replace lines[start:end+1] with new blockquote and block_id."""
     formatted_new = _format_quote_text(new_quote_text).split('\n')
     return lines[:start] + formatted_new + [block_id] + lines[end+1:]
-
-def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "Notes", vault_root: str = "") -> str:
-    """Creates an Obsidian URI in the correct format."""
-    if source_file.endswith('.md'):
-        source_file = source_file[:-3]
-    if vault_root:
-        rel_path = os.path.relpath(source_file, vault_root)
-    else:
-        rel_path = source_file
-    rel_path = rel_path.replace(os.sep, '/')
-    encoded_file = quote(rel_path)
-    encoded_block = quote(block_id)
-    return f"obsidian://open?vault={source_vault}&file={encoded_file}%23{encoded_block}"
 
 def frontmatter_str_to_dict(frontmatter: str) -> dict:
     """Convert frontmatter string to dictionary."""

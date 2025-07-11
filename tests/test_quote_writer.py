@@ -4,8 +4,7 @@ from quote_vault_manager.models.destination_file import DestinationFile
 from quote_vault_manager.models.source_file import SourceFile
 from quote_vault_manager.quote_writer import (
     find_quote_files_for_source,
-    unwrap_quote_in_source,
-    create_obsidian_uri
+    unwrap_quote_in_source
 )
 
 def test_create_quote_filename():
@@ -240,25 +239,24 @@ More text.
 
 def test_create_obsidian_uri():
     """Test that Obsidian URIs are created in the correct format."""
-    from quote_vault_manager.quote_writer import create_obsidian_uri
     
     # Test basic filename
-    uri = create_obsidian_uri("Deep Work.md", "^Quote001")
+    uri1 = DestinationFile.create_obsidian_uri("Deep Work.md", "^Quote001")
     expected = "obsidian://open?vault=Notes&file=Deep%20Work%23%5EQuote001"
-    assert uri == expected, f"Expected {expected}, got {uri}"
+    assert uri1 == expected, f"Expected {expected}, got {uri1}"
     
     # Test filename with relative path
-    uri2 = create_obsidian_uri("Test/File.md", "^Quote002", vault_root="Test")
+    uri2 = DestinationFile.create_obsidian_uri("Test/File.md", "^Quote002", vault_root="Test")
     expected2 = "obsidian://open?vault=Notes&file=File%23%5EQuote002"
     assert uri2 == expected2, f"Expected {expected2}, got {uri2}"
     
     # Test filename with nested relative path
-    uri3 = create_obsidian_uri("Books/Deep Work.md", "^Quote003", vault_root="Books")
+    uri3 = DestinationFile.create_obsidian_uri("Books/Deep Work.md", "^Quote003", vault_root="Books")
     expected3 = "obsidian://open?vault=Notes&file=Deep%20Work%23%5EQuote003"
     assert uri3 == expected3, f"Expected {expected3}, got {uri3}"
     
     # Test custom vault name
-    uri4 = create_obsidian_uri("My Book.md", "^Quote004", source_vault="MyVault")
+    uri4 = DestinationFile.create_obsidian_uri("My Book.md", "^Quote004", source_vault="MyVault")
     expected4 = "obsidian://open?vault=MyVault&file=My%20Book%23%5EQuote004"
     assert uri4 == expected4, f"Expected {expected4}, got {uri4}"
     
