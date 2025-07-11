@@ -145,9 +145,7 @@ class SourceFile:
     def unwrap_quote(self, quote: Quote) -> bool:
         """Unwraps a quote and marks it for unwrapping."""
         if quote:
-            quote.needs_unwrap_block_id = quote.block_id
             quote.text = f'"{quote.text}"'
-            quote.block_id = None
             quote.needs_unwrap = True
             return True
         return False
@@ -160,11 +158,9 @@ class SourceFile:
                     self.overwrite_quote_in_source(self.path, quote.block_id, quote.text, dry_run)
                 quote.needs_edit = False
             if getattr(quote, "needs_unwrap", False):
-                block_id_to_unwrap = getattr(quote, "needs_unwrap_block_id", None)
-                if block_id_to_unwrap is not None:
-                    self.unwrap_quote_in_source(self.path, block_id_to_unwrap, dry_run)
+                if quote.block_id is not None:
+                    self.unwrap_quote_in_source(self.path, quote.block_id, dry_run)
                 quote.needs_unwrap = False
-                quote.needs_unwrap_block_id = None
             if getattr(quote, "needs_block_id_assignment", False):
                 # Write the block ID to the file (unless dry_run)
                 self._write_block_id_to_file(quote, dry_run)
