@@ -1,7 +1,8 @@
 from .destination_file import DestinationFile
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import os
 from .base_vault import BaseVault
+from ..file_utils import get_book_title_from_path
 
 class DestinationVault(BaseVault):
     """Represents a collection of destination (quote) files in a vault."""
@@ -28,6 +29,75 @@ class DestinationVault(BaseVault):
         for dest in self.files:
             if dest.path:
                 dest.save(dest.path)
+
+    def sync_quotes_from_source(self, source_file: str, quotes_with_ids: list, block_id_map: dict, 
+                               dry_run: bool = False, vault_name: str = "Notes", 
+                               source_vault_path: Optional[str] = None) -> Dict[str, Any]:
+        """Sync quotes from a source file to this destination vault."""
+        results = {
+            'quotes_processed': 0,
+            'quotes_created': 0,
+            'quotes_updated': 0,
+            'errors': []
+        }
+        
+        book_title = get_book_title_from_path(source_file)
+        for idx, (quote_text, block_id) in enumerate(quotes_with_ids):
+            results['quotes_processed'] += 1
+            if block_id is None:
+                results['errors'].append(f"Quote at index {idx} has no block ID after assignment")
+                continue
+            filename = DestinationFile.create_quote_filename(book_title, block_id, quote_text)
+            quote_file_path = os.path.join(self.directory, book_title, filename)
+            if os.path.exists(quote_file_path):
+                dest = DestinationFile.from_file(quote_file_path)
+                updated = False
+                if dest.quote.text != quote_text:
+                    dest.quote.text = quote_text
+                    updated = True
+                if dest.quote.block_id != block_id:
+                    dest.quote.block_id = block_id
+                    updated = True
+                if updated and not dry_run:
+                    dest.save(quote_file_path)
+                    results['quotes_updated'] += 1
+            else:
+                # Create new DestinationFile and save
+                from .quote import Quote
+                frontmatter = {
+                    'block_id': block_id,
+                    'vault': vault_name,
+                    'delete': False,
+                    'favorite': False,
+                    'edited': False
+                }
+                dest = DestinationFile(frontmatter, Quote(quote_text, block_id))
+                if not dry_run:
+                    os.makedirs(os.path.dirname(quote_file_path), exist_ok=True)
+                    dest.save(quote_file_path)
+                results['quotes_created'] += 1
+        
+        return results
+
+    def remove_orphaned_quotes_for_source(self, source_file: str, block_id_map: dict, 
+                                        dry_run: bool = False) -> Dict[str, Any]:
+        """Remove quote files that no longer have a corresponding blockquote in the source file."""
+        results = {
+            'quotes_deleted': 0,
+            'errors': []
+        }
+        
+        existing_block_ids = set(block_id_map.values())
+        existing_quote_files = self.find_quote_files_for_source(source_file)
+        for quote_file in existing_quote_files:
+            filename = os.path.basename(quote_file)
+            block_id = DestinationFile.extract_block_id_from_filename(filename)
+            if block_id and block_id not in existing_block_ids:
+                results['quotes_deleted'] += 1
+                if not dry_run:
+                    DestinationFile.delete(quote_file)
+        
+        return results
 
     def delete_flagged(self, source_vault_path: str, dry_run: bool = False) -> dict:
         """Deletes all quote files with a delete flag. Returns a results dict."""
