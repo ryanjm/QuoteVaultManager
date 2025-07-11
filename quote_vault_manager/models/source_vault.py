@@ -5,6 +5,7 @@ from .base_vault import BaseVault
 from quote_vault_manager.services.source_sync import sync_source_file
 
 class SourceVault(BaseVault):
+    files: List[SourceFile]  # type: ignore
     """Represents a collection of source files in a vault."""
     def __init__(self, directory: str):
         super().__init__(directory)
@@ -29,19 +30,25 @@ class SourceVault(BaseVault):
         return errors
 
     def assign_block_ids_all(self, dry_run: bool = False) -> int:
-        """Assigns missing block IDs in all source files. Returns total block IDs added."""
+        """Assigns missing block IDs in all source files. Only sets flags; file update is deferred to commit_changes/save_all. Returns total block IDs added."""
         total = 0
         for source in self.files:
             total += source.assign_missing_block_ids(dry_run)
         return total
 
-    def save_all(self):
-        """Saves all source files."""
+    def commit_changes(self, dry_run: bool = False):
+        """Apply all in-memory changes: save all SourceFile objects, propagating quote edits/unwrapping. Honors dry_run."""
         for source in self.files:
-            source.save()
+            source.save(dry_run=dry_run)
+
+    def save_all(self):
+        """Commits all in-memory changes to disk."""
+        self.commit_changes(dry_run=False)
 
     def sync_to_destination(self, destination_vault, dry_run: bool = False) -> dict:
-        """Syncs all source files to the destination vault. Returns a results dict."""
+        """Commits all in-memory changes, then syncs all source files to the destination vault. Returns a results dict."""
+        if not dry_run:
+            self.commit_changes(dry_run=False)
         results = {
             'source_files_processed': 0,
             'total_quotes_processed': 0,

@@ -31,7 +31,7 @@ def sync_source_file(
     block_ids_added = source.assign_missing_block_ids(dry_run)
     results['block_ids_added'] += block_ids_added
     if block_ids_added and not dry_run:
-        source = SourceFile.from_file(source_file)  # Reload to get updated block IDs
+        source.save()
 
     # Prepare quotes_with_ids for downstream logic
     quotes_with_ids = [(q.text, q.block_id) for q in source.quotes]
@@ -54,8 +54,7 @@ def sync_source_file(
     results.update(orphan_results)
 
     # Save any changes to the source file (quotes, block IDs)
-    if block_ids_added and not dry_run:
-        source.save()
+    # (Already saved above after assigning block IDs)
 
     return results
 

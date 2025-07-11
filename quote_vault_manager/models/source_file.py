@@ -32,9 +32,8 @@ class SourceFile:
         return self.validate_block_ids_from_content(content)
 
     def assign_missing_block_ids(self, dry_run: bool = False) -> int:
-        """Assigns missing block IDs to quotes and updates the file. Returns the number of block IDs added."""
+        """Assigns missing block IDs to quotes. Returns the number of block IDs added. Only sets flags; file update is deferred to save()."""
         block_ids_added = 0
-        # Find the next available block ID
         with open(self.path, 'r', encoding='utf-8') as f:
             content = f.read()
         next_block_id = self.get_next_block_id(content)
@@ -45,35 +44,10 @@ class SourceFile:
                 while next_block_id in used_ids:
                     num = int(next_block_id.replace('^Quote', '')) + 1
                     next_block_id = f'^Quote{num:03d}'
-                # Inline logic for ensuring block ID in source
-                import os
-                if not os.path.exists(self.path):
-                    continue
-                with open(self.path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                lines = content.splitlines()
-                modified = False
-                new_lines = []
-                i = 0
-                while i < len(lines):
-                    line = lines[i]
-                    if SourceFile._is_blockquote_line(line):
-                        processed_lines, new_i, needs_block_id = SourceFile._process_blockquote_for_id_assignment(lines, i, quote.text)
-                        new_lines.extend(processed_lines)
-                        i = new_i
-                        if needs_block_id:
-                            new_lines.append(next_block_id)
-                            modified = True
-                    else:
-                        new_lines.append(line)
-                        i += 1
-                if modified and not dry_run:
-                    with open(self.path, 'w', encoding='utf-8') as f:
-                        f.write('\n'.join(new_lines))
                 quote.block_id = next_block_id
+                quote.needs_block_id_assignment = True
                 used_ids.add(next_block_id)
                 block_ids_added += 1
-                # Update next_block_id for the next missing one
                 num = int(next_block_id.replace('^Quote', '')) + 1
                 next_block_id = f'^Quote{num:03d}'
         return block_ids_added
@@ -179,7 +153,7 @@ class SourceFile:
         return False
 
     def save(self, dry_run: bool = False):
-        """Propagates edits and unwrapping for quotes with flags set, using in-place file updates only."""
+        """Propagates edits, unwrapping, and block ID assignments for quotes with flags set, using in-place file updates only."""
         for quote in self.quotes:
             if getattr(quote, "needs_edit", False):
                 if quote.block_id is not None and quote.text is not None:
@@ -191,6 +165,10 @@ class SourceFile:
                     self.unwrap_quote_in_source(self.path, block_id_to_unwrap, dry_run)
                 quote.needs_unwrap = False
                 quote.needs_unwrap_block_id = None
+            if getattr(quote, "needs_block_id_assignment", False):
+                # Write the block ID to the file (unless dry_run)
+                self._write_block_id_to_file(quote, dry_run)
+                quote.needs_block_id_assignment = False
 
     @staticmethod
     def build_source_file_path(source_path: str, source_vault_path: str) -> Optional[str]:
@@ -374,3 +352,33 @@ class SourceFile:
             return modified
         except Exception:
             return False 
+
+    def _write_block_id_to_file(self, quote: Quote, dry_run: bool = False):
+        """Helper to write the assigned block ID to the correct place in the file."""
+        if not quote.block_id:
+            return
+        import os
+        if not os.path.exists(self.path):
+            return
+        with open(self.path, 'r', encoding='utf-8') as f:
+            lines = f.read().splitlines()
+        # Find the blockquote matching the quote text, and insert the block ID after it if not present
+        i = 0
+        while i < len(lines):
+            if self._is_blockquote_line(lines[i]):
+                quote_lines, next_i = self._collect_blockquote_lines(lines, i)
+                current_quote_text = '\n'.join(quote_lines).strip()
+                if current_quote_text == (quote.text or '').strip():
+                    # Check if next line is a block ID
+                    if next_i < len(lines) and self.BLOCK_ID_PATTERN.match(lines[next_i].strip()):
+                        # Already has a block ID, skip
+                        return
+                    # Insert block ID after quote
+                    new_lines = lines[:next_i] + [quote.block_id] + lines[next_i:]
+                    if not dry_run:
+                        with open(self.path, 'w', encoding='utf-8') as f:
+                            f.write('\n'.join(new_lines))
+                    return
+                i = next_i
+            else:
+                i += 1 

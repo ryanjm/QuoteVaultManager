@@ -5,6 +5,8 @@ from .base_vault import BaseVault
 from ..file_utils import get_book_title_from_path
 
 class DestinationVault(BaseVault):
+    files: List[DestinationFile]  # type: ignore
+    
     """Represents a collection of destination (quote) files in a vault."""
     def __init__(self, directory: str):
         super().__init__(directory)
