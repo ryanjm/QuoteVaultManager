@@ -19,10 +19,23 @@ class DestinationFile:
 
     [Random Note](obsidian://advanced-uri?vault=Notes&commandid=random-note-open)
     """
-    def __init__(self, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None):
+    def __init__(self, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None, *, marked_for_deletion: bool = False, needs_update: bool = False, is_new: bool = False):
+        """
+        Initialize a DestinationFile.
+        Args:
+            frontmatter: Frontmatter dict.
+            quote: Quote object.
+            path: File path.
+            marked_for_deletion: If True, file will be deleted on commit.
+            needs_update: If True, file will be updated on commit.
+            is_new: If True, file is new and will be created on commit.
+        """
         self.frontmatter = frontmatter
         self.quote = quote
         self.path = path
+        self.marked_for_deletion = marked_for_deletion
+        self.needs_update = needs_update
+        self.is_new = is_new
 
     def __repr__(self):
         return f"DestinationFile(frontmatter={self.frontmatter!r}, quote={self.quote!r}, path={self.path!r})"
@@ -47,12 +60,14 @@ class DestinationFile:
         filename = os.path.basename(path)
         block_id = cls.extract_block_id_from_filename(filename)
         quote = Quote(quote_text, block_id)
-        return cls(frontmatter, quote, path=path)
+        return cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=False)
 
     def save(self, path: str):
         """Saves the current frontmatter and quote to the file at the given path."""
         if not path:
             raise ValueError("Path must not be None when saving a DestinationFile.")
+        import os
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         frontmatter_str = self.frontmatter_dict_to_str(self.frontmatter)
         quote_text = self.quote.text or ''
         # Format quote as blockquote
@@ -63,6 +78,8 @@ class DestinationFile:
             content = f"---\n---\n\n" + '\n'.join(quote_lines) + '\n'
         with open(path, 'w', encoding='utf-8') as f:
             f.write(content)
+        self.is_new = False
+        self.needs_update = False
 
     @staticmethod
     def delete(path: str):
@@ -231,4 +248,9 @@ class DestinationFile:
         try:
             return yaml.safe_dump(frontmatter_dict, sort_keys=False).strip()
         except Exception:
-            return "" 
+            return ""
+
+    @classmethod
+    def new(cls, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None) -> 'DestinationFile':
+        """Create a new DestinationFile with is_new=True."""
+        return cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=True) 
