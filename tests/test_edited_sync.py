@@ -33,7 +33,7 @@ def test_edited_quote_updates_source_and_resets_flag(tmp_path):
     # Setup quote file with edited: true and new quote
     qvault = tmp_path / "vault"
     qvault.mkdir()
-    frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
+    frontmatter = {"edited": True}
     quote_path = make_quote_file(qvault, frontmatter, "New quote")
     
     # Run sync
@@ -53,7 +53,7 @@ def test_non_edited_quote_is_ignored(tmp_path):
     src_path = make_source_file(tmp_path, "> Old\n^Quote001")
     qvault = tmp_path / "vault"
     qvault.mkdir()
-    frontmatter = {"edited": False, "source_path": os.path.basename(src_path)}
+    frontmatter = {"edited": False}
     quote_path = make_quote_file(qvault, frontmatter, "New")
     vault = DestinationVault(str(qvault))
     updated = vault.sync_edited_back(str(tmp_path), dry_run=False)
@@ -76,7 +76,7 @@ def test_dry_run_does_not_modify_files(tmp_path):
     src_path = make_source_file(tmp_path, orig)
     qvault = tmp_path / "vault"
     qvault.mkdir()
-    frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
+    frontmatter = {"edited": True}
     quote_path = make_quote_file(qvault, frontmatter, "New quote")
     vault = DestinationVault(str(qvault))
     updated = vault.sync_edited_back(str(tmp_path), dry_run=True)
@@ -93,7 +93,7 @@ def test_edit_single_line_to_multiline(tmp_path):
     # Setup quote file with edited: true and multiline new quote
     qvault = tmp_path / "vault"
     qvault.mkdir()
-    frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
+    frontmatter = {"edited": True}
     quote_path = make_quote_file(qvault, frontmatter, "Line one\nLine two")
     # Run sync
     vault = DestinationVault(str(qvault))
@@ -115,7 +115,7 @@ def test_edit_single_line_to_single_line(tmp_path):
     # Setup quote file with edited: true and new single-line quote
     qvault = tmp_path / "vault"
     qvault.mkdir()
-    frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
+    frontmatter = {"edited": True}
     quote_path = make_quote_file(qvault, frontmatter, "New single line")
     # Run sync
     vault = DestinationVault(str(qvault))

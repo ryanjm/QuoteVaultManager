@@ -125,8 +125,10 @@ class DestinationVault(BaseVault):
                 continue
             if not dest.source_path:
                 continue
-            import os
-            source_file_path = os.path.join(source_vault_path, dest.source_path) if source_vault_path else dest.source_path
+            source_path = dest.source_path
+            if source_path and not source_path.endswith('.md'):
+                source_path = source_path + '.md'
+            source_file_path = os.path.join(source_vault_path, source_path) if source_vault_path else source_path
             if not os.path.exists(source_file_path):
                 error_msg = f"Could not find source file {dest.source_path} in {source_vault_path} for quote file {dest.path}"
                 results['errors'].append(error_msg)

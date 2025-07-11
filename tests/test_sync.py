@@ -185,7 +185,6 @@ sync_quotes: true
         quote_content = """---
 delete: true
 favorite: false
-source_path: "test_source.md"
 ---
 
 > Quote to be deleted
@@ -463,7 +462,6 @@ def test_sync_vaults_delete_flagged(tmp_path):
     quote_content = """---
 delete: true
 favorite: false
-source_path: "book.md"
 ---
 
 > A quote to delete

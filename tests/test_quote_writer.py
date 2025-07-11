@@ -48,7 +48,6 @@ def test_read_quote_file_content():
         content = """---
 delete: false
 favorite: true
-source_path: "test.md"
 ---
 
 > This is a test quote
@@ -99,7 +98,6 @@ def test_update_quote_file_if_changed():
         initial_content = """---
 delete: false
 favorite: true
-source_path: "test.md"
 ---
 
 > Original quote text
@@ -140,7 +138,6 @@ def test_find_quote_files_for_source():
         quote1_content = """---
 delete: false
 favorite: false
-source_path: "test.md"
 ---
 
 > Quote 1
@@ -155,7 +152,6 @@ source_path: "test.md"
         quote2_content = """---
 delete: false
 favorite: false
-source_path: "other.md"
 ---
 
 > Quote 2
