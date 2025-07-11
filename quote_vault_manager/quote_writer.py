@@ -4,64 +4,6 @@ from urllib.parse import quote
 import re
 import yaml
 
-def _truncate_words_to_length(text: str, max_length: int = 30) -> str:
-    """Truncate text to max_length, but don't cut words in the middle."""
-    if len(text) <= max_length:
-        return text
-    
-    truncated = text[:max_length]
-    last_space = truncated.rfind(' ')
-    if last_space > 0:
-        return truncated[:last_space]
-    return truncated
-
-def _clean_filename_text(text: str) -> str:
-    """Clean text for use in filenames by replacing unsafe characters."""
-    # Replace unsafe characters with hyphens
-    cleaned = text.replace('\\', '-').replace('/', '-').replace(':', '-')
-    # Remove multiple consecutive hyphens and trim
-    cleaned = re.sub(r'-+', '-', cleaned)
-    return cleaned.strip('- ')
-
-def create_quote_filename(book_title: str, block_id: str, quote_text: str) -> str:
-    """Creates a filename for a quote file using the convention: [Book Title] - QuoteNNN - [First Few Words].md"""
-    clean_block_id = block_id.lstrip('^')
-    clean_quote_text = quote_text.strip()
-    
-    # Extract the first few words (up to 5 words, max 30 chars)
-    words = clean_quote_text.split()[:5]
-    first_words = ' '.join(words)
-    first_words = _truncate_words_to_length(first_words, 30)
-    first_words = _clean_filename_text(first_words)
-    
-    return f"{book_title} - {clean_block_id} - {first_words}.md"
-
-def _format_quote_text(quote_text: str) -> str:
-    """Format quote text with proper blockquote formatting."""
-    quote_lines = quote_text.split('\n')
-    return '\n'.join(f'> {line}' for line in quote_lines)
-
-def _create_quote_content_template(quote_text: str, source_file: str, block_id: str, frontmatter: str, vault_name: str, vault_root: str) -> str:
-    """Create quote content with the given frontmatter and quote text."""
-    from . import VERSION
-    from .transformations.v0_2_add_random_note_link import RANDOM_NOTE_LINK
-    
-    from quote_vault_manager.models.destination_file import DestinationFile
-    uri = DestinationFile.create_obsidian_uri(source_file, block_id, vault_name, vault_root)
-    link_text = os.path.basename(source_file).replace('.md', '')
-    formatted_quote = _format_quote_text(quote_text)
-    
-    return f"""---
-{frontmatter}
----
-
-{formatted_quote}
-
-**Source:** [{link_text}]({uri})
-
-{RANDOM_NOTE_LINK}
-"""
-
 def create_quote_content(quote_text: str, source_file: str, block_id: str, vault_name: str = "Notes", vault_root: str = "") -> str:
     """Creates the content for a quote file including frontmatter and source link."""
     from . import VERSION
@@ -70,7 +12,8 @@ favorite: false
 edited: false
 version: "{VERSION}"
 """
-    return _create_quote_content_template(quote_text, source_file, block_id, default_frontmatter, vault_name, vault_root)
+    from quote_vault_manager.models.destination_file import DestinationFile
+    return DestinationFile._create_quote_content_template(quote_text, source_file, block_id, default_frontmatter, vault_name, vault_root)
 
 def read_quote_file_content(file_path: str) -> tuple[Optional[str], Optional[str]]:
     """Reads a quote file and returns (frontmatter, quote_content) tuple."""
@@ -241,7 +184,7 @@ def _find_blockquote_with_id(lines, block_id):
 
 def _replace_blockquote(lines, start, end, new_quote_text, block_id):
     """Replace lines[start:end+1] with new blockquote and block_id."""
-    formatted_new = _format_quote_text(new_quote_text).split('\n')
+    formatted_new = new_quote_text.split('\n') # No longer need _format_quote_text
     return lines[:start] + formatted_new + [block_id] + lines[end+1:]
 
 def frontmatter_str_to_dict(frontmatter: str) -> dict:

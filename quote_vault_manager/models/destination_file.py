@@ -166,10 +166,11 @@ class DestinationFile:
 
     @staticmethod
     def _create_quote_content_template(quote_text: str, source_file: str, block_id: str, frontmatter: str, vault_name: str, vault_root: str) -> str:
+        """Create quote content with the given frontmatter and quote text."""
         from quote_vault_manager import VERSION
         from quote_vault_manager.transformations.v0_2_add_random_note_link import RANDOM_NOTE_LINK
-        import os
         uri = DestinationFile.create_obsidian_uri(source_file, block_id, vault_name, vault_root)
+        import os
         link_text = os.path.basename(source_file).replace('.md', '')
         formatted_quote = DestinationFile._format_quote_text(quote_text)
         return f"""---\n{frontmatter}\n---\n\n{formatted_quote}\n\n**Source:** [{link_text}]({uri})\n\n{RANDOM_NOTE_LINK}\n"""
