@@ -7,15 +7,14 @@ import tempfile
 import os
 import shutil
 from datetime import datetime, timedelta
-from quote_vault_manager.backup_utils import (
-    create_backup_path, create_backup, cleanup_old_backups, get_backup_count
-)
+from quote_vault_manager.services.backup_service import BackupService
+backup_service = BackupService.get_instance()
 
 
 def test_create_backup_path():
     """Test backup path creation with version and date."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        backup_path = create_backup_path(temp_dir, "V0.2")
+        backup_path = backup_service.create_backup_path(temp_dir, "V0.2")
         
         # Should contain .backup/v0_2_YYYY_MM_DD format
         assert ".backup" in backup_path
@@ -31,7 +30,7 @@ def test_create_backup_dry_run():
         with open(test_file, 'w') as f:
             f.write("Test content")
         
-        backup_path = create_backup(temp_dir, "V0.2", dry_run=True)
+        backup_path = backup_service.create_backup(temp_dir, "V0.2", dry_run=True)
         
         # Should return path but not create actual backup
         assert ".backup" in backup_path
@@ -54,7 +53,7 @@ def test_create_backup_actual():
         with open(test_file2, 'w') as f:
             f.write("Quote 2 content")
         
-        backup_path = create_backup(temp_dir, "V0.2", dry_run=False)
+        backup_path = backup_service.create_backup(temp_dir, "V0.2", dry_run=False)
         
         # Should create backup directory
         assert os.path.exists(backup_path)
@@ -93,7 +92,7 @@ def test_cleanup_old_backups():
         os.makedirs(invalid_backup)
         
         # Test dry run
-        removed = cleanup_old_backups(temp_dir, dry_run=True)
+        removed = backup_service.cleanup_old_backups(temp_dir, dry_run=True)
         assert len(removed) == 1
         assert old_backup in removed[0]
         
@@ -103,7 +102,7 @@ def test_cleanup_old_backups():
         assert os.path.exists(invalid_backup)
         
         # Test actual cleanup
-        removed = cleanup_old_backups(temp_dir, dry_run=False)
+        removed = backup_service.cleanup_old_backups(temp_dir, dry_run=False)
         assert len(removed) == 1
         assert old_backup in removed[0]
         
@@ -117,7 +116,7 @@ def test_get_backup_count():
     """Test counting backup directories."""
     with tempfile.TemporaryDirectory() as temp_dir:
         # No backups initially
-        assert get_backup_count(temp_dir) == 0
+        assert backup_service.get_backup_count(temp_dir) == 0
         
         # Create backup directory
         backup_root = os.path.join(temp_dir, ".backup")
@@ -131,7 +130,7 @@ def test_get_backup_count():
         with open(os.path.join(backup_root, "not-a-backup.txt"), 'w') as f:
             f.write("not a backup")
         
-        assert get_backup_count(temp_dir) == 2
+        assert backup_service.get_backup_count(temp_dir) == 2
 
 
 def test_backup_integration_with_transformations():
@@ -152,9 +151,9 @@ version: "V0.0"
 **Source:** [test](link)
 """)
         
-        from quote_vault_manager.services.transformation_manager import TransformationManager, default_transformations, default_backup_utils
+        from quote_vault_manager.services.transformation_manager import TransformationManager, default_transformations
         from quote_vault_manager import VERSION
-        transformation_manager = TransformationManager(VERSION, default_backup_utils, default_transformations)
+        transformation_manager = TransformationManager(VERSION, default_transformations)
         
         # Apply transformations (should create backup)
         files_updated = transformation_manager.apply_transformations_to_all_quotes(temp_dir, dry_run=False)
@@ -164,7 +163,7 @@ version: "V0.0"
         # Should have created backup
         backup_root = os.path.join(temp_dir, ".backup")
         assert os.path.exists(backup_root)
-        assert get_backup_count(temp_dir) == 1
+        assert backup_service.get_backup_count(temp_dir) == 1
         
         # Backup should contain the original file
         backup_dirs = os.listdir(backup_root)
