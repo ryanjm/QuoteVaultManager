@@ -90,7 +90,7 @@ class DestinationVault(BaseVault):
                     'favorite': False,
                     'edited': False
                 }
-                new_dest = DestinationFile.new(frontmatter, Quote(quote_text, block_id), path=quote_file_path)
+                new_dest = DestinationFile.new(frontmatter, Quote(quote_text, block_id), path=quote_file_path, source_path=source_file)
                 self.files.append(new_dest)
                 results['quotes_created'] += 1
         if not dry_run:
@@ -123,17 +123,15 @@ class DestinationVault(BaseVault):
         for dest in self.files:
             if not dest.is_marked_for_deletion:
                 continue
-            frontmatter = dest.frontmatter
-            source_file = frontmatter.get('source_path')
-            if not source_file:
+            if not dest.source_path:
                 continue
             import os
-            source_file_path = os.path.join(source_vault_path, source_file) if source_vault_path else source_file
+            source_file_path = os.path.join(source_vault_path, dest.source_path) if source_vault_path else dest.source_path
             if not os.path.exists(source_file_path):
-                error_msg = f"Could not find source file {source_file} in {source_vault_path} for quote file {dest.path}"
+                error_msg = f"Could not find source file {dest.source_path} in {source_vault_path} for quote file {dest.path}"
                 results['errors'].append(error_msg)
                 continue
-            block_id = frontmatter.get('block_id') or dest.quote.block_id
+            block_id = dest.quote.block_id
             if not block_id:
                 continue
             source = SourceFile.from_file(source_file_path)

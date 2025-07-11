@@ -36,6 +36,15 @@ class DestinationFile:
         self.marked_for_deletion = marked_for_deletion
         self.needs_update = needs_update
         self.is_new = is_new
+        import os
+        self.filename = os.path.basename(path) if path else None
+        self.source_path = None
+        if path:
+            try:
+                frontmatter_str, content = self.read_quote_file_content(path)
+                self.source_path = self.extract_source_path_from_content(content)
+            except Exception:
+                self.source_path = None
 
     def __repr__(self):
         return f"DestinationFile(frontmatter={self.frontmatter!r}, quote={self.quote!r}, path={self.path!r})"
@@ -60,7 +69,10 @@ class DestinationFile:
         filename = os.path.basename(path)
         block_id = cls.extract_block_id_from_filename(filename)
         quote = Quote(quote_text, block_id)
-        return cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=False)
+        obj = cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=False)
+        obj.filename = filename
+        obj.source_path = cls.extract_source_path_from_content(content)
+        return obj
 
     def save(self, path: str):
         """Saves the current frontmatter and quote to the file at the given path."""
@@ -251,6 +263,10 @@ class DestinationFile:
             return ""
 
     @classmethod
-    def new(cls, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None) -> 'DestinationFile':
+    def new(cls, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None, source_path: Optional[str] = None) -> 'DestinationFile':
         """Create a new DestinationFile with is_new=True."""
-        return cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=True) 
+        obj = cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=True)
+        import os
+        obj.filename = os.path.basename(path) if path else None
+        obj.source_path = source_path
+        return obj 
