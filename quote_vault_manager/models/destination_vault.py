@@ -1,5 +1,5 @@
 from .destination_file import DestinationFile
-from typing import List
+from typing import List, Optional
 import os
 from .base_vault import BaseVault
 
@@ -72,8 +72,25 @@ class DestinationVault(BaseVault):
 
     def sync_edited_back(self, source_vault_path: str, dry_run: bool = False) -> int:
         """Syncs all edited quotes back to their source files. Returns the count synced."""
-        from quote_vault_manager.source_sync import sync_edited_quotes
-        return sync_edited_quotes(self.directory, dry_run=dry_run, source_vault_path=source_vault_path)
+        return self._sync_edited_quotes(dry_run, source_vault_path)
+
+    def _sync_edited_quotes(self, dry_run: bool = False, source_vault_path: Optional[str] = None) -> int:
+        """Sync edited quotes back to source files."""
+        from .source_file import SourceFile
+        if not isinstance(self.directory, str) or not self.directory:
+            return 0
+        updated_count = 0
+        for root, dirs, files in os.walk(self.directory):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if not DestinationFile.is_edited_quote_file(file_path):
+                    continue
+                source_path, block_id, new_quote_text, fm = DestinationFile.get_edited_quote_info(file_path, file)
+                if source_path is None or block_id is None or new_quote_text is None:
+                    continue
+                if SourceFile.process_edited_quote(file_path, source_path, block_id, new_quote_text, fm, dry_run, source_vault_path or ""):
+                    updated_count += 1
+        return updated_count
 
     def find_quote_files_for_source(self, source_file: str) -> list:
         import os

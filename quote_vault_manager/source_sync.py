@@ -5,10 +5,8 @@ Source file synchronization logic for processing individual source files.
 import os
 from typing import Dict, Any, Optional
 from .models.source_file import SourceFile
-# All quote file utilities now live on DestinationFile or DestinationVault
-from .file_utils import get_book_title_from_path, get_vault_name_from_path
-from .models.source_file import SourceFile
 from .models.destination_file import DestinationFile, Quote
+from .file_utils import get_book_title_from_path, get_vault_name_from_path
 
 def sync_source_file(
     source_file: str, 
@@ -50,54 +48,7 @@ def sync_source_file(
 
     return results
 
-def _extract_block_id_from_filename(filename: str) -> str:
-    """Extract block ID from filename if possible."""
-    if ' - Quote' in filename:
-        parts = filename.split(' - Quote')
-        if len(parts) >= 2:
-            block_id_part = parts[1].split(' - ')[0]
-            return f"^Quote{block_id_part}"
-    return ""
 
-def _build_source_file_path(source_path: Optional[str], source_vault_path: Optional[str]) -> Optional[str]:
-    """Build full path to source file."""
-    if not isinstance(source_path, str) or not source_path:
-        return None
-    if source_vault_path and isinstance(source_vault_path, str):
-        return os.path.join(source_vault_path, source_path)
-    return source_path
-
-def _update_quote_file_frontmatter(file_path: str, frontmatter_dict: dict) -> None:
-    """Update the frontmatter in a quote file."""
-    from quote_vault_manager.models.destination_file import DestinationFile
-    new_frontmatter = DestinationFile.frontmatter_dict_to_str(frontmatter_dict)
-    with open(file_path, 'r', encoding='utf-8') as f:
-        file_content = f.read()
-    parts = file_content.split('---', 2)
-    if len(parts) >= 3:
-        new_content = f"---\n{new_frontmatter}\n---\n{parts[2]}"
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(new_content)
-
-def sync_edited_quotes(destination_path: str, dry_run: bool = False, vault_name: str = "Notes", source_vault_path: Optional[str] = None) -> int:
-    """Sync edited quotes back to source files."""
-    from .models.destination_file import DestinationFile
-    from .models.source_file import SourceFile
-    if not isinstance(destination_path, str) or not destination_path:
-        return 0
-    updated_count = 0
-    dest_path_str: str = str(destination_path)
-    for root, dirs, files in os.walk(dest_path_str):
-        for file in files:
-            file_path = os.path.join(root, file)
-            if not DestinationFile.is_edited_quote_file(file_path):
-                continue
-            source_path, block_id, new_quote_text, fm = DestinationFile.get_edited_quote_info(file_path, file)
-            if source_path is None or block_id is None or new_quote_text is None:
-                continue
-            if SourceFile.process_edited_quote(file_path, source_path, block_id, new_quote_text, fm, dry_run, source_vault_path or ""):
-                updated_count += 1
-    return updated_count
 
 def _init_results(source_file: str) -> Dict[str, Any]:
     """Initialize the results dictionary for sync operations."""
@@ -110,13 +61,10 @@ def _init_results(source_file: str) -> Dict[str, Any]:
         'errors': []
     }
 
-
-
 def _sync_quote_files(
     source_file, destination_path, quotes_with_ids, block_id_map, dry_run, vault_name, source_vault_path, results
 ):
     """Create or update quote files for all quotes in the source file."""
-    from .models.destination_file import DestinationFile
     book_title = get_book_title_from_path(source_file)
     for idx, (quote_text, block_id) in enumerate(quotes_with_ids):
         results['quotes_processed'] += 1
@@ -139,7 +87,6 @@ def _sync_quote_files(
                 results['quotes_updated'] += 1
         else:
             # Create new DestinationFile and save
-            from quote_vault_manager.models.destination_file import DestinationFile
             frontmatter = {
                 'block_id': block_id,
                 'vault': vault_name,
@@ -155,19 +102,14 @@ def _sync_quote_files(
 
 def _remove_orphaned_quote_files(source_file, destination_path, block_id_map, dry_run, results):
     """Remove quote files that no longer have a corresponding blockquote in the source file."""
-    from .models.destination_file import DestinationFile
     from .models.destination_vault import DestinationVault
     existing_block_ids = set(block_id_map.values())
     vault = DestinationVault(destination_path)
     existing_quote_files = vault.find_quote_files_for_source(source_file)
     for quote_file in existing_quote_files:
         filename = os.path.basename(quote_file)
-        if ' - Quote' in filename:
-            parts = filename.split(' - Quote')
-            if len(parts) >= 2:
-                block_id_part = parts[1].split(' - ')[0]
-                block_id = f"^Quote{block_id_part}"
-                if block_id not in existing_block_ids:
-                    results['quotes_deleted'] = results.get('quotes_deleted', 0) + 1
-                    if not dry_run:
-                        DestinationFile.delete(quote_file) 
+        block_id = DestinationFile.extract_block_id_from_filename(filename)
+        if block_id and block_id not in existing_block_ids:
+            results['quotes_deleted'] = results.get('quotes_deleted', 0) + 1
+            if not dry_run:
+                DestinationFile.delete(quote_file) 

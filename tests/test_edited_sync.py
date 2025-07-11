@@ -1,7 +1,7 @@
 import os
 import shutil
 import pytest
-from quote_vault_manager.source_sync import sync_edited_quotes
+from quote_vault_manager.models.destination_vault import DestinationVault
 from quote_vault_manager.models.destination_file import DestinationFile
 
 def make_source_file(tmp_path, content, name="Book.md"):
@@ -37,7 +37,8 @@ def test_edited_quote_updates_source_and_resets_flag(tmp_path):
     quote_path = make_quote_file(qvault, frontmatter, "New quote")
     
     # Run sync
-    updated = sync_edited_quotes(str(qvault), dry_run=False, source_vault_path=str(tmp_path))
+    vault = DestinationVault(str(qvault))
+    updated = vault.sync_edited_back(str(tmp_path), dry_run=False)
     
     # Source file updated
     src_content = read_file(src_path)
@@ -54,7 +55,8 @@ def test_non_edited_quote_is_ignored(tmp_path):
     qvault.mkdir()
     frontmatter = {"edited": False, "source_path": os.path.basename(src_path)}
     quote_path = make_quote_file(qvault, frontmatter, "New")
-    updated = sync_edited_quotes(str(qvault), dry_run=False, source_vault_path=str(tmp_path))
+    vault = DestinationVault(str(qvault))
+    updated = vault.sync_edited_back(str(tmp_path), dry_run=False)
     assert updated == 0
     assert "> Old" in read_file(src_path)
 
@@ -65,7 +67,8 @@ def test_missing_source_path_is_ignored(tmp_path):
     # No source_path in frontmatter, but URI is present, so update should occur
     frontmatter = {"edited": True}
     quote_path = make_quote_file(qvault, frontmatter, "New", name="Book - Quote001 - Test2.md")
-    updated = sync_edited_quotes(str(qvault), dry_run=False, source_vault_path=str(tmp_path))
+    vault = DestinationVault(str(qvault))
+    updated = vault.sync_edited_back(str(tmp_path), dry_run=False)
     assert updated == 1
 
 def test_dry_run_does_not_modify_files(tmp_path):
@@ -75,7 +78,8 @@ def test_dry_run_does_not_modify_files(tmp_path):
     qvault.mkdir()
     frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
     quote_path = make_quote_file(qvault, frontmatter, "New quote")
-    updated = sync_edited_quotes(str(qvault), dry_run=True, source_vault_path=str(tmp_path))
+    vault = DestinationVault(str(qvault))
+    updated = vault.sync_edited_back(str(tmp_path), dry_run=True)
     # Source file not updated
     assert read_file(src_path) == orig
     # Quote file edited flag not reset
@@ -92,7 +96,8 @@ def test_edit_single_line_to_multiline(tmp_path):
     frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
     quote_path = make_quote_file(qvault, frontmatter, "Line one\nLine two")
     # Run sync
-    updated = sync_edited_quotes(str(qvault), dry_run=False, source_vault_path=str(tmp_path))
+    vault = DestinationVault(str(qvault))
+    updated = vault.sync_edited_back(str(tmp_path), dry_run=False)
     # Source file updated to multiline
     src_content = read_file(src_path)
     assert "> Line one" in src_content
@@ -113,7 +118,8 @@ def test_edit_single_line_to_single_line(tmp_path):
     frontmatter = {"edited": True, "source_path": os.path.basename(src_path)}
     quote_path = make_quote_file(qvault, frontmatter, "New single line")
     # Run sync
-    updated = sync_edited_quotes(str(qvault), dry_run=False, source_vault_path=str(tmp_path))
+    vault = DestinationVault(str(qvault))
+    updated = vault.sync_edited_back(str(tmp_path), dry_run=False)
     # Source file updated to new single line
     src_content = read_file(src_path)
     assert "> New single line" in src_content

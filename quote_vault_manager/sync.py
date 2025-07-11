@@ -6,7 +6,7 @@ from typing import Dict, Any
 from .config import load_config, ConfigError
 from .file_utils import has_sync_quotes_flag, get_markdown_files
 from .transformation_manager import apply_transformations_to_all_quotes
-from .source_sync import sync_source_file, sync_edited_quotes
+from .source_sync import sync_source_file
 from .models.source_vault import SourceVault
 from .models.destination_vault import DestinationVault
 from . import VERSION
@@ -94,12 +94,4 @@ def _process_source_files(source_vault_path: str, destination_vault_path: str, d
             results['errors'].extend(file_results['errors']) 
 
 
-def _process_edited_quotes(destination_vault_path: str, source_vault_path: str, dry_run: bool, results: Dict[str, Any]) -> None:
-    """Sync edited quotes back to source files and update results."""
-    edited_synced = sync_edited_quotes(destination_vault_path, dry_run=dry_run, source_vault_path=source_vault_path)
-    results['total_edited_quotes_synced'] = edited_synced
-    if edited_synced:
-        if dry_run:
-            print(f"✏️  [DRY-RUN] {edited_synced} edited quotes would be synced back to source files.")
-        else:
-            print(f"✏️  {edited_synced} edited quotes synced back to source files.") 
+ 
