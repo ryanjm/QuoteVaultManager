@@ -1,4 +1,4 @@
-from quote_vault_manager.quote_parser import extract_blockquotes, extract_blockquotes_with_ids, get_next_block_id
+from quote_vault_manager.models.source_file import SourceFile
 
 def test_extract_blockquotes():
     sample = (
@@ -16,7 +16,7 @@ def test_extract_blockquotes():
         "Second quote",
         "Third quote\nStill third quote"
     ]
-    result = extract_blockquotes(sample)
+    result = SourceFile.extract_blockquotes(sample)
     print("Extracted:", result)
     assert result == expected, f"Expected {expected}, got {result}"
     print("Test passed.")
@@ -39,7 +39,7 @@ def test_extract_blockquotes_with_ids():
         ("Second quote", "^Quote002"),
         ("Third quote\nStill third quote", "^Quote003")
     ]
-    result = extract_blockquotes_with_ids(sample)
+    result = SourceFile.extract_blockquotes_with_ids(sample)
     print("Extracted with IDs:", result)
     assert result == expected, f"Expected {expected}, got {result}"
     print("Test with IDs passed.")
@@ -47,7 +47,7 @@ def test_extract_blockquotes_with_ids():
 def test_get_next_block_id():
     # Test with no existing IDs
     sample1 = "> Some quote\n> Another line\n"
-    result1 = get_next_block_id(sample1)
+    result1 = SourceFile.get_next_block_id(sample1)
     assert result1 == "^Quote001", f"Expected ^Quote001, got {result1}"
     
     # Test with existing IDs
@@ -59,7 +59,7 @@ def test_get_next_block_id():
         "> Third quote\n"
         "^Quote005\n"
     )
-    result2 = get_next_block_id(sample2)
+    result2 = SourceFile.get_next_block_id(sample2)
     assert result2 == "^Quote006", f"Expected ^Quote006, got {result2}"
     
     # Test transition from Quote999 to Quote1000
@@ -67,7 +67,7 @@ def test_get_next_block_id():
         "> Some quote\n"
         "^Quote999\n"
     )
-    result3 = get_next_block_id(sample3)
+    result3 = SourceFile.get_next_block_id(sample3)
     assert result3 == "^Quote1000", f"Expected ^Quote1000, got {result3}"
     
     print("Next block ID tests passed.")

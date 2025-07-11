@@ -1,8 +1,13 @@
 from .quote import Quote
-from typing import List, Optional
+from typing import List, Optional, Tuple, Set
+import re
 
 class SourceFile:
     """Represents a source file containing multiple quotes."""
+    
+    # Block ID pattern for source files
+    BLOCK_ID_PATTERN = re.compile(r'^\^Quote(\d{3})$', re.MULTILINE)
+    
     def __init__(self, path: str, quotes: List[Quote]):
         self.path = path
         self.quotes = quotes
@@ -13,29 +18,26 @@ class SourceFile:
     @classmethod
     def from_file(cls, path: str) -> 'SourceFile':
         """Parses the file at path and returns a SourceFile with all quotes."""
-        from quote_vault_manager.quote_parser import extract_blockquotes_with_ids
         quotes = []
         with open(path, 'r', encoding='utf-8') as f:
             content = f.read()
-        for quote_text, block_id in extract_blockquotes_with_ids(content):
+        for quote_text, block_id in cls.extract_blockquotes_with_ids(content):
             quotes.append(Quote(quote_text, block_id))
         return cls(path, quotes)
 
     def validate_block_ids(self) -> List[str]:
         """Validates block IDs in the source file and returns a list of errors."""
-        from quote_vault_manager.quote_parser import validate_block_ids
         with open(self.path, 'r', encoding='utf-8') as f:
             content = f.read()
-        return validate_block_ids(content)
+        return self.validate_block_ids_from_content(content)
 
     def assign_missing_block_ids(self, dry_run: bool = False) -> int:
         """Assigns missing block IDs to quotes and updates the file. Returns the number of block IDs added."""
-        from quote_vault_manager.quote_parser import get_next_block_id
         block_ids_added = 0
         # Find the next available block ID
         with open(self.path, 'r', encoding='utf-8') as f:
             content = f.read()
-        next_block_id = get_next_block_id(content)
+        next_block_id = self.get_next_block_id(content)
         used_ids = set(q.block_id for q in self.quotes if q.block_id)
         for quote in self.quotes:
             if not quote.block_id and quote.text:
@@ -75,6 +77,94 @@ class SourceFile:
                 num = int(next_block_id.replace('^Quote', '')) + 1
                 next_block_id = f'^Quote{num:03d}'
         return block_ids_added
+
+    @staticmethod
+    def extract_blockquotes(markdown: str) -> List[str]:
+        """
+        Extracts multiline blockquotes from markdown text.
+        Groups consecutive lines starting with '>' as a single quote.
+        Returns a list of blockquote strings (with leading '> ' removed).
+        """
+        blockquotes = []
+        current = []
+        for line in markdown.splitlines():
+            if line.strip().startswith('>'):
+                current.append(line.lstrip('> ').rstrip())
+            else:
+                if current:
+                    blockquotes.append('\n'.join(current).strip())
+                    current = []
+        if current:
+            blockquotes.append('\n'.join(current).strip())
+        return blockquotes
+
+    @staticmethod
+    def extract_blockquotes_with_ids(markdown: str) -> List[Tuple[str, Optional[str]]]:
+        """
+        Extracts blockquotes and their associated block IDs (^QuoteNNN) from markdown text.
+        Returns a list of (quote_text, block_id or None) tuples.
+        """
+        blockquotes = []
+        lines = markdown.splitlines()
+        i = 0
+        while i < len(lines):
+            if lines[i].strip().startswith('>'):
+                quote_lines = []
+                while i < len(lines) and lines[i].strip().startswith('>'):
+                    quote_lines.append(lines[i].lstrip('> ').rstrip())
+                    i += 1
+                # Look ahead for block ID
+                block_id = None
+                if i < len(lines) and SourceFile.BLOCK_ID_PATTERN.match(lines[i].strip()):
+                    block_id = lines[i].strip()
+                    i += 1
+                blockquotes.append(('\n'.join(quote_lines).strip(), block_id))
+            else:
+                i += 1
+        return blockquotes
+
+    @staticmethod
+    def validate_block_ids_from_content(markdown: str) -> List[str]:
+        """
+        Validates block IDs in markdown text and returns a list of errors.
+        Checks for duplicate block IDs and invalid formats.
+        """
+        errors = []
+        seen_ids: Set[str] = set()
+        line_number = 0
+        
+        for line in markdown.splitlines():
+            line_number += 1
+            stripped_line = line.strip()
+            
+            if SourceFile.BLOCK_ID_PATTERN.match(stripped_line):
+                block_id = stripped_line
+                if block_id in seen_ids:
+                    errors.append(f"Duplicate block ID '{block_id}' found at line {line_number}")
+                else:
+                    seen_ids.add(block_id)
+            elif stripped_line.startswith('^Quote') and not SourceFile.BLOCK_ID_PATTERN.match(stripped_line):
+                errors.append(f"Invalid block ID format '{stripped_line}' at line {line_number}. Expected format: ^QuoteNNN (where NNN is 3 digits)")
+        
+        return errors
+
+    @staticmethod
+    def get_next_block_id(markdown: str) -> str:
+        """
+        Finds the highest existing block ID in the markdown and returns the next sequential ID.
+        If no block IDs exist, returns '^Quote001'.
+        """
+        existing_ids = []
+        for line in markdown.splitlines():
+            match = SourceFile.BLOCK_ID_PATTERN.match(line.strip())
+            if match:
+                existing_ids.append(int(match.group(1)))
+        
+        if not existing_ids:
+            return '^Quote001'
+        
+        next_num = max(existing_ids) + 1
+        return f'^Quote{next_num:03d}'
 
     def add_quote(self, text: Optional[str], block_id: Optional[str] = None):
         """Adds a new quote to the source file object."""

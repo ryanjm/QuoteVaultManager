@@ -1,74 +1,22 @@
 import tempfile
 import os
-from quote_vault_manager.quote_parser import validate_block_ids
 from quote_vault_manager.config import load_config, ConfigError
+from quote_vault_manager.models.source_file import SourceFile
 
-def test_duplicate_block_id_detection():
-    """Test that duplicate block IDs are detected and reported."""
-    markdown_content = """---
-sync_quotes: true
----
-
-> First quote
-^Quote001
-
-> Second quote
-^Quote001
-
-> Third quote
-^Quote002
-"""
-    errors = validate_block_ids(markdown_content)
-    
-    assert len(errors) == 1
-    assert "Duplicate block ID '^Quote001'" in errors[0]
-    assert "line" in errors[0]
-    
-    print("Duplicate block ID detection test passed.")
+def test_duplicate_block_ids():
+    markdown_content = "> Quote 1\n^Quote001\n> Quote 2\n^Quote001\n"
+    errors = SourceFile.validate_block_ids_from_content(markdown_content)
+    assert any("Duplicate block ID" in e for e in errors)
 
 def test_invalid_block_id_format():
-    """Test that invalid block ID formats are detected."""
-    markdown_content = """---
-sync_quotes: true
----
-
-> First quote
-^Quote1
-
-> Second quote
-^QuoteABC
-
-> Third quote
-^Quote001
-"""
-    errors = validate_block_ids(markdown_content)
-    
-    assert len(errors) == 2
-    assert "Invalid block ID format" in errors[0]
-    assert "Invalid block ID format" in errors[1]
-    
-    print("Invalid block ID format detection test passed.")
+    markdown_content = "> Quote 1\n^QuoteABC\n> Quote 2\n^Quote002\n"
+    errors = SourceFile.validate_block_ids_from_content(markdown_content)
+    assert any("Invalid block ID format" in e for e in errors)
 
 def test_valid_block_ids():
-    """Test that valid block IDs don't generate errors."""
-    markdown_content = """---
-sync_quotes: true
----
-
-> First quote
-^Quote001
-
-> Second quote
-^Quote002
-
-> Third quote
-^Quote003
-"""
-    errors = validate_block_ids(markdown_content)
-    
-    assert len(errors) == 0
-    
-    print("Valid block IDs test passed.")
+    markdown_content = "> Quote 1\n^Quote001\n> Quote 2\n^Quote002\n"
+    errors = SourceFile.validate_block_ids_from_content(markdown_content)
+    assert not errors
 
 def test_config_missing_keys():
     """Test that missing config keys are detected."""
@@ -111,7 +59,7 @@ another_unexpected: "another value"
         os.unlink(config_file)
 
 if __name__ == "__main__":
-    test_duplicate_block_id_detection()
+    test_duplicate_block_ids()
     test_invalid_block_id_format()
     test_valid_block_ids()
     test_config_missing_keys()

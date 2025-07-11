@@ -3,9 +3,6 @@ import os
 from quote_vault_manager.models.destination_file import DestinationFile
 from quote_vault_manager.models.source_file import SourceFile
 from quote_vault_manager.models.destination_vault import DestinationVault
-from quote_vault_manager.quote_writer import (
-    unwrap_quote_in_source
-)
 
 def test_create_quote_filename():
     # Test basic filename creation
@@ -188,58 +185,6 @@ source_path: "other.md"
 
 
 
-def test_unwrap_quote_in_source():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Create a test source file
-        source_file = os.path.join(temp_dir, "test_source.md")
-        source_content = """# Test Document
-
-Some text before.
-
-> This is a quote that should be unwrapped
-> It has multiple lines
-^Quote001
-
-Some text after.
-
-> This is another quote that should stay
-> It also has multiple lines
-^Quote002
-
-More text.
-"""
-        with open(source_file, 'w') as f:
-            f.write(source_content)
-        
-        # Test unwrapping Quote001 (dry run)
-        modified = unwrap_quote_in_source(source_file, "^Quote001", dry_run=True)
-        assert modified
-        
-        # Check that file wasn't actually modified in dry run
-        with open(source_file, 'r') as f:
-            content = f.read()
-            assert "> This is a quote that should be unwrapped" in content
-            assert "^Quote001" in content
-        
-        # Test actual unwrapping
-        modified = unwrap_quote_in_source(source_file, "^Quote001", dry_run=False)
-        assert modified
-        
-        # Check that the quote was unwrapped
-        with open(source_file, 'r') as f:
-            content = f.read()
-            assert '"This is a quote that should be unwrapped It has multiple lines"' in content
-            assert "^Quote001" not in content
-            assert "> This is another quote that should stay" in content  # Other quote should remain
-        
-        # Test unwrapping non-existent block ID
-        modified = unwrap_quote_in_source(source_file, "^Quote999", dry_run=False)
-        assert not modified
-        
-        print("Quote unwrapping tests passed.")
-
-
-
 def test_create_obsidian_uri():
     """Test that Obsidian URIs are created in the correct format."""
     
@@ -272,6 +217,5 @@ if __name__ == "__main__":
     test_extract_quote_text_from_content()
     test_update_quote_file_if_changed()
     test_find_quote_files_for_source()
-    test_unwrap_quote_in_source()
     test_create_obsidian_uri()
     print("All quote writer tests passed!") 

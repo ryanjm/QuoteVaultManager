@@ -4,7 +4,7 @@ Source file synchronization logic for processing individual source files.
 
 import os
 from typing import Dict, Any, Optional
-from .quote_parser import extract_blockquotes_with_ids, validate_block_ids
+from .models.source_file import SourceFile
 # All quote file utilities now live on DestinationFile or DestinationVault
 from .file_utils import get_book_title_from_path, get_vault_name_from_path
 from .models.source_file import SourceFile
@@ -79,7 +79,7 @@ def _update_quote_file_frontmatter(file_path: str, frontmatter_dict: dict) -> No
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
 
-def sync_edited_quotes(destination_path: str, dry_run: bool = False, vault_name: str = "Notes", source_vault_path: str = None) -> int:
+def sync_edited_quotes(destination_path: str, dry_run: bool = False, vault_name: str = "Notes", source_vault_path: Optional[str] = None) -> int:
     """Sync edited quotes back to source files."""
     from .models.destination_file import DestinationFile
     from .models.source_file import SourceFile
@@ -93,10 +93,9 @@ def sync_edited_quotes(destination_path: str, dry_run: bool = False, vault_name:
             if not DestinationFile.is_edited_quote_file(file_path):
                 continue
             source_path, block_id, new_quote_text, fm = DestinationFile.get_edited_quote_info(file_path, file)
-            svp = source_vault_path if source_vault_path is not None else ""
             if source_path is None or block_id is None or new_quote_text is None:
                 continue
-            if SourceFile.process_edited_quote(file_path, source_path, block_id, new_quote_text, fm, dry_run, svp):
+            if SourceFile.process_edited_quote(file_path, source_path, block_id, new_quote_text, fm, dry_run, source_vault_path or ""):
                 updated_count += 1
     return updated_count
 
@@ -111,57 +110,7 @@ def _init_results(source_file: str) -> Dict[str, Any]:
         'errors': []
     }
 
-def _read_and_validate_source_file(source_file: str, results: Dict[str, Any]) -> str:
-    """Read and validate a source file's content, returning the content or an empty string on error."""
-    try:
-        with open(source_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-        block_id_errors = validate_block_ids(content)
-        if block_id_errors:
-            for error in block_id_errors:
-                results['errors'].append(f"{source_file}: {error}")
-            return ""
-        return content
-    except UnicodeDecodeError as e:
-        results['errors'].append(f"Unicode decode error in {source_file}: {e}")
-    except PermissionError as e:
-        results['errors'].append(f"Permission denied reading {source_file}: {e}")
-    except Exception as e:
-        results['errors'].append(f"Error reading {source_file}: {e}")
-    return ""
 
-def _collect_block_ids(quotes_with_ids):
-    """Return a map of quote indices to block IDs and the next available block number."""
-    block_id_map = {}
-    used_block_nums = set()
-    for idx, (_, block_id) in enumerate(quotes_with_ids):
-        if block_id and block_id.startswith('^Quote'):
-            try:
-                num = int(block_id.replace('^Quote', ''))
-                used_block_nums.add(num)
-                block_id_map[idx] = block_id
-            except Exception:
-                pass
-    next_block_num = max(used_block_nums) + 1 if used_block_nums else 1
-    return block_id_map, next_block_num
-
-def _assign_missing_block_ids(source_file, quotes_with_ids, block_id_map, next_block_num, dry_run, results):
-    """Assign missing block IDs to quotes and update the source file. Returns updated quotes and a flag."""
-    added = False
-    updated_quotes = []
-    for idx, (quote_text, block_id) in enumerate(quotes_with_ids):
-        if block_id is None:
-            new_block_id = f'^Quote{next_block_num:03d}'
-            next_block_num += 1
-            # All quote file utilities now live on DestinationFile or DestinationVault
-            from .models.destination_file import DestinationFile
-            DestinationFile.ensure_block_id_in_source(source_file, quote_text, new_block_id, dry_run)
-            results['block_ids_added'] += 1
-            updated_quotes.append((quote_text, new_block_id))
-            added = True
-        else:
-            updated_quotes.append((quote_text, block_id))
-    return updated_quotes, added
 
 def _sync_quote_files(
     source_file, destination_path, quotes_with_ids, block_id_map, dry_run, vault_name, source_vault_path, results
