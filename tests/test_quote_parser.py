@@ -16,7 +16,8 @@ def test_extract_blockquotes():
         "Second quote",
         "Third quote\nStill third quote"
     ]
-    result = SourceFile.extract_blockquotes(sample)
+    # Use extract_blockquotes_with_ids and extract just the quote text
+    result = [quote_text for quote_text, _ in SourceFile.extract_blockquotes_with_ids(sample)]
     print("Extracted:", result)
     assert result == expected, f"Expected {expected}, got {result}"
     print("Test passed.")

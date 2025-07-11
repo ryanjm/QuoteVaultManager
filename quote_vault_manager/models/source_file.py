@@ -78,25 +78,7 @@ class SourceFile:
                 next_block_id = f'^Quote{num:03d}'
         return block_ids_added
 
-    @staticmethod
-    def extract_blockquotes(markdown: str) -> List[str]:
-        """
-        Extracts multiline blockquotes from markdown text.
-        Groups consecutive lines starting with '>' as a single quote.
-        Returns a list of blockquote strings (with leading '> ' removed).
-        """
-        blockquotes = []
-        current = []
-        for line in markdown.splitlines():
-            if line.strip().startswith('>'):
-                current.append(line.lstrip('> ').rstrip())
-            else:
-                if current:
-                    blockquotes.append('\n'.join(current).strip())
-                    current = []
-        if current:
-            blockquotes.append('\n'.join(current).strip())
-        return blockquotes
+
 
     @staticmethod
     def extract_blockquotes_with_ids(markdown: str) -> List[Tuple[str, Optional[str]]]:
