@@ -3,7 +3,7 @@ import tempfile
 import pytest
 from quote_vault_manager.models.source_vault import SourceVault
 from quote_vault_manager.models.destination_vault import DestinationVault
-from quote_vault_manager.sync import sync_vaults
+from quote_vault_manager.services.sync import sync_vaults
 
 
 def test_full_sync_flow(tmp_path):

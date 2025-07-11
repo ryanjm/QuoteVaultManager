@@ -1,14 +1,14 @@
 import tempfile
 import os
 import logging
-from quote_vault_manager.logger import setup_logging, log_sync_action, log_error
-from quote_vault_manager.sync import sync_vaults
+from quote_vault_manager.services.logger import Logger
+from quote_vault_manager.services.sync import sync_vaults
 from quote_vault_manager.file_utils import (
     has_sync_quotes_flag,
     get_markdown_files,
     get_book_title_from_path
 )
-from quote_vault_manager.source_sync import sync_source_file
+from quote_vault_manager.services.source_sync import sync_source_file
 from quote_vault_manager.models.destination_vault import DestinationVault
 
 def test_setup_logging_and_log_sync_action_and_log_error():
@@ -16,23 +16,23 @@ def test_setup_logging_and_log_sync_action_and_log_error():
         std_log_path = os.path.join(temp_dir, "std.log")
         err_log_path = os.path.join(temp_dir, "err.log")
         config = {"std_log_path": std_log_path, "err_log_path": err_log_path}
-        std_logger, err_logger = setup_logging(config)
+        logger = Logger.get_instance(config['std_log_path'], config['err_log_path'])
 
         # Test log_sync_action
-        log_sync_action(std_logger, "TEST_ACTION", "Test details", dry_run=True)
+        logger.log_sync_action("TEST_ACTION", "Test details", dry_run=True)
         with open(std_log_path, "r") as f:
             log_content = f.read()
             assert "==== SYNC ACTION" in log_content
             assert "[DRY-RUN] TEST_ACTION: Test details" in log_content
 
         # Test log_error
-        log_error(err_logger, "Test error", context="TestContext")
+        logger.log_error("Test error", context="TestContext")
         with open(err_log_path, "r") as f:
             log_content = f.read()
             assert "TestContext: Test error" in log_content
 
         # Test log_error with no context
-        log_error(err_logger, "Error without context")
+        logger.log_error("Error without context")
         with open(err_log_path, "r") as f:
             log_content = f.read()
             assert "Error without context" in log_content
@@ -448,7 +448,7 @@ sync_quotes: true
 
 def test_sync_vaults_delete_flagged(tmp_path):
     import shutil
-    from quote_vault_manager.sync import sync_vaults
+    from quote_vault_manager.services.sync import sync_vaults
     # Setup source vault and file
     source_vault = tmp_path / "source"
     source_vault.mkdir()

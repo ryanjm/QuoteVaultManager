@@ -2,6 +2,7 @@ from .source_file import SourceFile
 from typing import List
 import os
 from .base_vault import BaseVault
+from quote_vault_manager.services.source_sync import sync_source_file
 
 class SourceVault(BaseVault):
     """Represents a collection of source files in a vault."""
@@ -41,7 +42,6 @@ class SourceVault(BaseVault):
 
     def sync_to_destination(self, destination_vault, dry_run: bool = False) -> dict:
         """Syncs all source files to the destination vault. Returns a results dict."""
-        from quote_vault_manager.source_sync import sync_source_file
         results = {
             'source_files_processed': 0,
             'total_quotes_processed': 0,

@@ -2,14 +2,14 @@ import pytest
 from quote_vault_manager.transformations import v0_1_add_version
 from quote_vault_manager.transformations import v0_2_add_random_note_link
 from quote_vault_manager.transformations import v0_3_add_edited_flag
-from quote_vault_manager.transformation_manager import TransformationManager
+from quote_vault_manager.services.transformation_manager import TransformationManager
 from quote_vault_manager import VERSION
 import tempfile
 import os
 
 @pytest.fixture(scope="module")
 def transformation_manager():
-    from quote_vault_manager.transformation_manager import default_transformations, default_backup_utils
+    from quote_vault_manager.services.transformation_manager import default_transformations, default_backup_utils
     return TransformationManager(VERSION, default_backup_utils, default_transformations)
 
 def test_adds_version_if_missing():

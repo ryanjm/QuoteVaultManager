@@ -4,9 +4,9 @@ Source file synchronization logic for processing individual source files.
 
 import os
 from typing import Dict, Any, Optional
-from .models.source_file import SourceFile
-from .models.destination_file import DestinationFile, Quote
-from .file_utils import get_book_title_from_path, get_vault_name_from_path
+from quote_vault_manager.models.source_file import SourceFile
+from quote_vault_manager.models.destination_file import DestinationFile, Quote
+from quote_vault_manager.file_utils import get_book_title_from_path, get_vault_name_from_path
 
 def sync_source_file(
     source_file: str, 
@@ -38,7 +38,7 @@ def sync_source_file(
     block_id_map = {i: q.block_id for i, q in enumerate(source.quotes) if q.block_id}
 
     # Use DestinationVault for destination operations
-    from .models.destination_vault import DestinationVault
+    from quote_vault_manager.models.destination_vault import DestinationVault
     destination_vault = DestinationVault(destination_path)
     
     # Sync quotes to destination

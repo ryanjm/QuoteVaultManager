@@ -1,8 +1,8 @@
 import argparse
 import sys
 from quote_vault_manager.config import load_config, ConfigError
-from quote_vault_manager.sync import sync_vaults
-from quote_vault_manager.logger import setup_logging, log_sync_action, log_error
+from quote_vault_manager.services.sync import sync_vaults
+from quote_vault_manager.services.logger import Logger
 from . import VERSION
 
 def main():
@@ -24,19 +24,19 @@ Examples:
         # Load configuration
         config = load_config(args.config)
         
-        # Setup logging
-        std_logger, err_logger = setup_logging(config)
+        # Setup logger singleton
+        logger = Logger.get_instance(config.get('std_log_path', ''), config.get('err_log_path', ''))
         
         # Run sync
         if args.dry_run:
             print("🔍 Running in DRY-RUN mode - no changes will be made")
             print("=" * 50)
-            log_sync_action(std_logger, "DRY-RUN", "Starting sync in dry-run mode", dry_run=True)
+            logger.log_sync_action("DRY-RUN", "Starting sync in dry-run mode", dry_run=True)
         
         results = sync_vaults(config, dry_run=args.dry_run)
         
         # Log results
-        log_sync_action(std_logger, "SYNC_COMPLETED", 
+        logger.log_sync_action("SYNC_COMPLETED", 
                        f"Processed {results['source_files_processed']} files, "
                        f"{results['total_quotes_processed']} quotes", 
                        dry_run=args.dry_run)
@@ -55,7 +55,7 @@ Examples:
             print(f"\n❌ Errors encountered:")
             for error in results['errors']:
                 print(f"  - {error}")
-                log_error(err_logger, error, "Sync Error")
+                logger.log_error(error, "Sync Error")
             sys.exit(1)
         else:
             print(f"\n✅ Sync completed successfully!")
@@ -65,20 +65,17 @@ Examples:
     except ConfigError as e:
         error_msg = f"Configuration error: {e}"
         print(f"❌ {error_msg}")
-        if 'err_logger' in locals():
-            log_error(err_logger, str(e), "Configuration Error")
+        logger.log_error(str(e), "Configuration Error")
         sys.exit(1)
     except FileNotFoundError as e:
         error_msg = f"File not found: {e}"
         print(f"❌ {error_msg}")
-        if 'err_logger' in locals():
-            log_error(err_logger, str(e), "File Not Found")
+        logger.log_error(str(e), "File Not Found")
         sys.exit(1)
     except Exception as e:
         error_msg = f"Unexpected error: {e}"
         print(f"❌ {error_msg}")
-        if 'err_logger' in locals():
-            log_error(err_logger, str(e), "Unexpected Error")
+        logger.log_error(str(e), "Unexpected Error")
         sys.exit(1)
 
 if __name__ == "__main__":

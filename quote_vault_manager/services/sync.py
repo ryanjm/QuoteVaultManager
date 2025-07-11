@@ -3,13 +3,13 @@ Main synchronization orchestrator for the quote vault manager.
 """
 
 from typing import Dict, Any
-from .config import load_config, ConfigError
-from .file_utils import has_sync_quotes_flag, get_markdown_files
-from .transformation_manager import transformation_manager
-from .source_sync import sync_source_file
-from .models.source_vault import SourceVault
-from .models.destination_vault import DestinationVault
-from . import VERSION
+from quote_vault_manager.config import load_config, ConfigError
+from quote_vault_manager.file_utils import has_sync_quotes_flag, get_markdown_files
+from quote_vault_manager.services.transformation_manager import transformation_manager
+from quote_vault_manager.services.source_sync import sync_source_file
+from quote_vault_manager.models.source_vault import SourceVault
+from quote_vault_manager.models.destination_vault import DestinationVault
+from quote_vault_manager import VERSION
 
 
 def sync_vaults(config: Dict[str, str], dry_run: bool = False) -> Dict[str, Any]:

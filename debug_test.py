@@ -7,7 +7,7 @@ import sys
 # Add the project root to the Python path
 sys.path.insert(0, '/Users/ryanjm/code/quote_vault_manager')
 
-from quote_vault_manager.sync import sync_source_file
+from quote_vault_manager.services.source_sync import sync_source_file
 
 def debug_test():
     """Simple debug test to see what's happening with quote creation."""

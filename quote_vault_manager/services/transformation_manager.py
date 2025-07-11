@@ -5,7 +5,10 @@ Transformation manager for applying versioned transformations to quote files.
 import os
 import glob
 from typing import Dict, Any
-from .models.destination_file import DestinationFile
+from quote_vault_manager.models.destination_file import DestinationFile
+from quote_vault_manager.backup_utils import create_backup, cleanup_old_backups
+from quote_vault_manager import VERSION
+from quote_vault_manager.transformations import v0_1_add_version, v0_2_add_random_note_link, v0_3_add_edited_flag
 
 
 class TransformationManager:
@@ -60,10 +63,6 @@ class TransformationManager:
         return files_updated
 
 # Default instantiation for current usage
-from . import VERSION
-from .backup_utils import create_backup, cleanup_old_backups
-from .transformations import v0_1_add_version, v0_2_add_random_note_link, v0_3_add_edited_flag
-
 default_transformations = [
     ("V0.1", v0_1_add_version.transform),
     ("V0.2", v0_2_add_random_note_link.transform),

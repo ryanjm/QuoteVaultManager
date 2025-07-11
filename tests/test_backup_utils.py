@@ -152,7 +152,7 @@ version: "V0.0"
 **Source:** [test](link)
 """)
         
-        from quote_vault_manager.transformation_manager import TransformationManager, default_transformations, default_backup_utils
+        from quote_vault_manager.services.transformation_manager import TransformationManager, default_transformations, default_backup_utils
         from quote_vault_manager import VERSION
         transformation_manager = TransformationManager(VERSION, default_backup_utils, default_transformations)
         
