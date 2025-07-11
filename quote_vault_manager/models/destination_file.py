@@ -1,5 +1,5 @@
 from .quote import Quote
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 class DestinationFile:
     """
@@ -19,7 +19,7 @@ class DestinationFile:
 
     [Random Note](obsidian://advanced-uri?vault=Notes&commandid=random-note-open)
     """
-    def __init__(self, frontmatter: Dict[str, Any], quote: Quote, path: str = None):
+    def __init__(self, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None):
         self.frontmatter = frontmatter
         self.quote = quote
         self.path = path
@@ -51,6 +51,8 @@ class DestinationFile:
 
     def save(self, path: str):
         """Saves the current frontmatter and quote to the file at the given path."""
+        if not path:
+            raise ValueError("Path must not be None when saving a DestinationFile.")
         frontmatter_str = self.frontmatter_dict_to_str(self.frontmatter)
         quote_text = self.quote.text or ''
         # Format quote as blockquote
@@ -66,7 +68,7 @@ class DestinationFile:
     def delete(path: str):
         """Deletes the destination file at the given path."""
         import os
-        if os.path.exists(path):
+        if path and os.path.exists(path):
             os.remove(path)
 
     @staticmethod
@@ -107,6 +109,8 @@ class DestinationFile:
 
     def update_frontmatter(self, updates: dict):
         """Update the frontmatter in the destination file with the given updates."""
+        if not self.path:
+            raise ValueError("Path must not be None when updating frontmatter.")
         self.frontmatter.update(updates)
         new_frontmatter = self.frontmatter_dict_to_str(self.frontmatter)
         with open(self.path, 'r', encoding='utf-8') as f:
@@ -192,23 +196,11 @@ class DestinationFile:
         default_frontmatter = f"""delete: false\nfavorite: false\nedited: false\nversion: \"{VERSION}\"\n"""
         return DestinationFile._create_quote_content_template(quote_text, source_file, block_id, default_frontmatter, vault_name, vault_root)
 
-    @classmethod
-    def read_quote_file_content(cls, file_path: str) -> tuple:
-        import os
-        if not isinstance(file_path, str) or not os.path.exists(file_path):
-            return None, None
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            parts = content.split('---', 2)
-            if len(parts) >= 3:
-                frontmatter = parts[1].strip()
-                quote_content = parts[2].strip()
-                return frontmatter, quote_content
-            else:
-                return None, content.strip()
-        except Exception:
-            return None, None
+    @staticmethod
+    def read_quote_file_content(path: str) -> tuple:
+        """Reads the file and returns (frontmatter, content) tuple."""
+        from quote_vault_manager.file_utils import split_frontmatter_from_file
+        return split_frontmatter_from_file(path)
 
     @classmethod
     def extract_quote_text_from_content(cls, content: str) -> str:

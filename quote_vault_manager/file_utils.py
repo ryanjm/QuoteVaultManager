@@ -11,20 +11,10 @@ def has_sync_quotes_flag(file_path: str) -> bool:
     Checks if a markdown file has sync_quotes: true in its frontmatter.
     Returns True if the flag is set, False otherwise.
     """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # Look for frontmatter
-        if content.startswith('---'):
-            parts = content.split('---', 2)
-            if len(parts) >= 2:
-                frontmatter = parts[1]
-                return 'sync_quotes: true' in frontmatter
-        
-        return False
-    except Exception:
-        return False
+    frontmatter, _ = split_frontmatter_from_file(file_path)
+    if frontmatter:
+        return 'sync_quotes: true' in frontmatter
+    return False
 
 
 def get_markdown_files(directory: str) -> List[str]:
@@ -57,3 +47,31 @@ def get_book_title_from_path(file_path: str) -> str:
 def get_vault_name_from_path(vault_path: str) -> str:
     """Extracts the vault name (last folder) from a full vault path."""
     return os.path.basename(os.path.normpath(vault_path)) 
+
+
+def split_frontmatter(content: str) -> tuple:
+    """
+    Splits markdown content into (frontmatter, body) tuple.
+    If frontmatter is present (YAML between ---), returns (frontmatter, body).
+    If not, returns (None, content).
+    """
+    if content.startswith('---'):
+        parts = content.split('---', 2)
+        if len(parts) >= 3:
+            frontmatter = parts[1].strip()
+            body = parts[2].lstrip('\n')
+            return frontmatter, body
+    return None, content 
+
+
+def split_frontmatter_from_file(path: str) -> tuple:
+    """
+    Opens the file at the given path and splits its content into (frontmatter, body) tuple.
+    Returns (frontmatter, body) or (None, content) if no frontmatter is present or file can't be read.
+    """
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return split_frontmatter(content)
+    except Exception:
+        return None, None 
