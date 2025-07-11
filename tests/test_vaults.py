@@ -22,13 +22,13 @@ def test_source_vault_load_and_save(tmp_path):
 
 def test_destination_vault_load_and_save(tmp_path):
     # Create two destination files
-    file1 = tmp_path / "a.md"
-    file2 = tmp_path / "b.md"
-    file1.write_text("---\nblock_id: ^Quote001\n---\n\n> Quote 1\n^Quote001\n")
-    file2.write_text("---\nblock_id: ^Quote002\n---\n\n> Quote 2\n^Quote002\n")
+    file1 = tmp_path / "a - Quote001 - Test.md"
+    file2 = tmp_path / "b - Quote002 - Test.md"
+    file1.write_text("---\n---\n\n> Quote 1\n")
+    file2.write_text("---\n---\n\n> Quote 2\n")
     vault = DestinationVault(str(tmp_path))
     assert len(vault.files) == 2
     # Test batch save (should not change content)
     vault.save_all()
-    assert file1.read_text() == "---\nblock_id: ^Quote001\n---\n\n> Quote 1\n^Quote001\n"
-    assert file2.read_text() == "---\nblock_id: ^Quote002\n---\n\n> Quote 2\n^Quote002\n" 
+    assert file1.read_text() == "---\n---\n\n> Quote 1\n"
+    assert file2.read_text() == "---\n---\n\n> Quote 2\n" 

@@ -3,50 +3,7 @@ from typing import Optional
 from urllib.parse import quote
 import re
 import yaml
-
-def create_quote_content(quote_text: str, source_file: str, block_id: str, vault_name: str = "Notes", vault_root: str = "") -> str:
-    """Creates the content for a quote file including frontmatter and source link."""
-    from . import VERSION
-    default_frontmatter = f"""delete: false
-favorite: false
-edited: false
-version: "{VERSION}"
-"""
-    from quote_vault_manager.models.destination_file import DestinationFile
-    return DestinationFile._create_quote_content_template(quote_text, source_file, block_id, default_frontmatter, vault_name, vault_root)
-
-def read_quote_file_content(file_path: str) -> tuple[Optional[str], Optional[str]]:
-    """Reads a quote file and returns (frontmatter, quote_content) tuple."""
-    if not os.path.exists(file_path):
-        return None, None
-    
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # Split frontmatter and content
-        parts = content.split('---', 2)
-        if len(parts) >= 3:
-            frontmatter = parts[1].strip()
-            quote_content = parts[2].strip()
-            return frontmatter, quote_content
-        else:
-            return None, content.strip()
-    except Exception:
-        return None, None
-
-def extract_quote_text_from_content(content: Optional[str]) -> Optional[str]:
-    """Extracts the actual quote text from quote file content (removes > prefix)."""
-    if content is None:
-        return None
-    lines = content.split('\n')
-    quote_lines = []
-    for line in lines:
-        if line.strip().startswith('>'):
-            quote_lines.append(line.lstrip('> ').rstrip())
-        elif line.strip().startswith('**Source:'):
-            break
-    return '\n'.join(quote_lines) if quote_lines else None
+from quote_vault_manager.models.destination_file import DestinationFile
 
 def find_quote_files_for_source(destination_path: str, source_file: str) -> list[str]:
     """Finds all quote files that reference a specific source file."""
@@ -63,7 +20,7 @@ def find_quote_files_for_source(destination_path: str, source_file: str) -> list
             if file.endswith('.md'):
                 file_path = os.path.join(root, file)
                 try:
-                    frontmatter, _ = read_quote_file_content(file_path)
+                    frontmatter, _ = DestinationFile.read_quote_file_content(file_path)
                     if frontmatter and f'source_path: "{source_filename}"' in frontmatter:
                         quote_files.append(file_path)
                 except Exception:
@@ -187,16 +144,18 @@ def _replace_blockquote(lines, start, end, new_quote_text, block_id):
     formatted_new = new_quote_text.split('\n') # No longer need _format_quote_text
     return lines[:start] + formatted_new + [block_id] + lines[end+1:]
 
-def frontmatter_str_to_dict(frontmatter: str) -> dict:
-    """Convert frontmatter string to dictionary."""
-    try:
-        return yaml.safe_load(frontmatter) or {}
-    except Exception:
-        return {}
-
-def frontmatter_dict_to_str(frontmatter_dict: dict) -> str:
-    """Convert frontmatter dictionary to string."""
-    try:
-        return yaml.safe_dump(frontmatter_dict, sort_keys=False).strip()
-    except Exception:
-        return "" 
+def _format_quote_text(quote_text: str) -> str:
+    """Formats the quote text for blockquote replacement."""
+    # Remove leading/trailing quotes if they exist
+    quote_text = re.sub(r'^"([^"]*)"$', r'\1', quote_text)
+    quote_text = re.sub(r'^"([^"]*)"$', r'\1', quote_text)
+    
+    # Split into lines and format each line
+    lines = quote_text.split('\n')
+    formatted_lines = []
+    for line in lines:
+        if line.strip().startswith('>'):
+            formatted_lines.append(line)
+        else:
+            formatted_lines.append(f'> {line}')
+    return '\n'.join(formatted_lines) 

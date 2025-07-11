@@ -5,9 +5,7 @@ Transformation manager for applying versioned transformations to quote files.
 import os
 import glob
 from typing import Dict, Any
-from .quote_writer import (
-    read_quote_file_content, frontmatter_str_to_dict, frontmatter_dict_to_str
-)
+from .models.destination_file import DestinationFile
 from .backup_utils import create_backup, cleanup_old_backups
 from . import VERSION
 
@@ -17,8 +15,6 @@ def apply_transformations_to_quote_file(file_path: str, dry_run: bool = False) -
     Applies all necessary transformations to a quote file and updates it if needed.
     Returns True if the file was (or would be) updated, False otherwise.
     """
-    from .models.destination_file import DestinationFile
-    from . import VERSION
     dest = DestinationFile.from_file(file_path)
     frontmatter = dest.frontmatter
     content = dest.quote.text

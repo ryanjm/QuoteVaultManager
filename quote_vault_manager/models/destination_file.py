@@ -2,7 +2,23 @@ from .quote import Quote
 from typing import Dict, Any
 
 class DestinationFile:
-    """Represents a destination file with frontmatter and a single quote."""
+    """
+    Represents a destination file with frontmatter and a single quote.
+
+    Example Destination File Format:
+    ---
+    favorite: false
+    delete: false
+    edited: false
+    version: "0.3"
+    ---
+
+    > This is a quote from the book.
+
+    **Source:** [Book Title](obsidian://open?vault=Notes&file=Book%20Title%23%5EQuote001)
+
+    [Random Note](obsidian://advanced-uri?vault=Notes&commandid=random-note-open)
+    """
     def __init__(self, frontmatter: Dict[str, Any], quote: Quote, path: str = None):
         self.frontmatter = frontmatter
         self.quote = quote
@@ -24,29 +40,25 @@ class DestinationFile:
     @classmethod
     def from_file(cls, path: str) -> 'DestinationFile':
         """Parses the file at path and returns a DestinationFile with frontmatter and quote."""
-        from quote_vault_manager.quote_writer import read_quote_file_content, frontmatter_str_to_dict, extract_quote_text_from_content
         import os
-        frontmatter_str, content = read_quote_file_content(path)
-        frontmatter = frontmatter_str_to_dict(frontmatter_str) if frontmatter_str else {}
-        quote_text = extract_quote_text_from_content(content)
-        # Try to get block_id from frontmatter first, then from filename
-        block_id = frontmatter.get('block_id') if isinstance(frontmatter.get('block_id'), str) else None
-        if not block_id:
-            filename = os.path.basename(path)
-            block_id = DestinationFile.extract_block_id_from_filename(filename)
+        frontmatter_str, content = cls.read_quote_file_content(path)
+        frontmatter = cls.frontmatter_str_to_dict(frontmatter_str) if frontmatter_str else {}
+        quote_text = cls.extract_quote_text_from_content(content)
+        filename = os.path.basename(path)
+        block_id = cls.extract_block_id_from_filename(filename)
         quote = Quote(quote_text, block_id)
         return cls(frontmatter, quote, path=path)
 
     def save(self, path: str):
         """Saves the current frontmatter and quote to the file at the given path."""
-        from quote_vault_manager.quote_writer import frontmatter_dict_to_str
-        frontmatter_str = frontmatter_dict_to_str(self.frontmatter)
+        frontmatter_str = self.frontmatter_dict_to_str(self.frontmatter)
         quote_text = self.quote.text or ''
         # Format quote as blockquote
         quote_lines = [f'> {line}' for line in quote_text.split('\n') if line.strip()]
-        if self.quote.block_id:
-            quote_lines.append(self.quote.block_id)
-        content = f"---\n{frontmatter_str}\n---\n\n" + '\n'.join(quote_lines) + '\n'
+        if frontmatter_str:
+            content = f"---\n{frontmatter_str}\n---\n\n" + '\n'.join(quote_lines) + '\n'
+        else:
+            content = f"---\n---\n\n" + '\n'.join(quote_lines) + '\n'
         with open(path, 'w', encoding='utf-8') as f:
             f.write(content)
 
@@ -60,13 +72,12 @@ class DestinationFile:
     @staticmethod
     def is_edited_quote_file(file_path: str) -> bool:
         """Return True if file is a markdown file with edited: true in frontmatter."""
-        if not file_path.endswith('.md'):
+        if not isinstance(file_path, str) or not file_path.endswith('.md'):
             return False
-        from quote_vault_manager.quote_writer import read_quote_file_content, frontmatter_str_to_dict
-        frontmatter, _ = read_quote_file_content(file_path)
+        frontmatter, _ = DestinationFile.read_quote_file_content(file_path)
         if not frontmatter:
             return False
-        fm = frontmatter_str_to_dict(frontmatter)
+        fm = DestinationFile.frontmatter_str_to_dict(frontmatter)
         return fm.get('edited') is True
 
     @staticmethod
@@ -84,27 +95,27 @@ class DestinationFile:
     @staticmethod
     def get_edited_quote_info(file_path: str, filename: str) -> tuple:
         """Extract source_path (from URI only), block_id (from filename), new_quote_text, and frontmatter dict from file."""
-        from quote_vault_manager.quote_writer import read_quote_file_content, frontmatter_str_to_dict, extract_quote_text_from_content
-        frontmatter, content = read_quote_file_content(file_path)
-        fm = frontmatter_str_to_dict(frontmatter) if frontmatter else {}
+        if not isinstance(file_path, str):
+            return "", "", "", {}
+        frontmatter, content = DestinationFile.read_quote_file_content(file_path)
+        fm = DestinationFile.frontmatter_str_to_dict(frontmatter) if frontmatter else {}
         content_str = str(content or "")
         source_path = DestinationFile.extract_source_path_from_content(content_str) or ""
         block_id = DestinationFile.extract_block_id_from_filename(filename)
-        new_quote_text = extract_quote_text_from_content(content_str)
+        new_quote_text = DestinationFile.extract_quote_text_from_content(content_str)
         return source_path, block_id, new_quote_text, fm
 
     def update_frontmatter(self, updates: dict):
         """Update the frontmatter in the destination file with the given updates."""
         self.frontmatter.update(updates)
-        from quote_vault_manager.quote_writer import frontmatter_dict_to_str
-        new_frontmatter = frontmatter_dict_to_str(self.frontmatter)
+        new_frontmatter = self.frontmatter_dict_to_str(self.frontmatter)
         with open(self.path, 'r', encoding='utf-8') as f:
             file_content = f.read()
         parts = file_content.split('---', 2)
         if len(parts) >= 3:
             new_content = f"---\n{new_frontmatter}\n---\n{parts[2]}"
             with open(self.path, 'w', encoding='utf-8') as f:
-                f.write(new_content) 
+                f.write(new_content)
 
     @staticmethod
     def extract_block_id_from_filename(filename: str) -> str:
@@ -114,7 +125,7 @@ class DestinationFile:
             if len(parts) >= 2:
                 block_id_part = parts[1].split(' - ')[0]
                 return f"^Quote{block_id_part}"
-        return "" 
+        return ""
 
     @staticmethod
     def create_obsidian_uri(source_file: str, block_id: str, source_vault: str = "Notes", vault_root: str = "") -> str:
@@ -181,10 +192,10 @@ class DestinationFile:
         default_frontmatter = f"""delete: false\nfavorite: false\nedited: false\nversion: \"{VERSION}\"\n"""
         return DestinationFile._create_quote_content_template(quote_text, source_file, block_id, default_frontmatter, vault_name, vault_root)
 
-    @staticmethod
-    def read_quote_file_content(file_path: str) -> tuple:
+    @classmethod
+    def read_quote_file_content(cls, file_path: str) -> tuple:
         import os
-        if not os.path.exists(file_path):
+        if not isinstance(file_path, str) or not os.path.exists(file_path):
             return None, None
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -199,10 +210,10 @@ class DestinationFile:
         except Exception:
             return None, None
 
-    @staticmethod
-    def extract_quote_text_from_content(content: str) -> str:
+    @classmethod
+    def extract_quote_text_from_content(cls, content: str) -> str:
         if content is None:
-            return None
+            return ""
         lines = content.split('\n')
         quote_lines = []
         for line in lines:
@@ -210,19 +221,21 @@ class DestinationFile:
                 quote_lines.append(line.lstrip('> ').rstrip())
             elif line.strip().startswith('**Source:'):
                 break
-        return '\n'.join(quote_lines) if quote_lines else None
+        return '\n'.join(quote_lines) if quote_lines else ""
 
-    @staticmethod
-    def frontmatter_str_to_dict(frontmatter: str) -> dict:
+    @classmethod
+    def frontmatter_str_to_dict(cls, frontmatter: str) -> dict:
         import yaml
         try:
             return yaml.safe_load(frontmatter) or {}
         except Exception:
             return {}
 
-    @staticmethod
-    def frontmatter_dict_to_str(frontmatter_dict: dict) -> str:
+    @classmethod
+    def frontmatter_dict_to_str(cls, frontmatter_dict: dict) -> str:
         import yaml
+        if not frontmatter_dict:
+            return ""
         try:
             return yaml.safe_dump(frontmatter_dict, sort_keys=False).strip()
         except Exception:

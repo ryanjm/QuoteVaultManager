@@ -69,8 +69,8 @@ def _build_source_file_path(source_path: Optional[str], source_vault_path: Optio
 
 def _update_quote_file_frontmatter(file_path: str, frontmatter_dict: dict) -> None:
     """Update the frontmatter in a quote file."""
-    from .quote_writer import frontmatter_dict_to_str
-    new_frontmatter = frontmatter_dict_to_str(frontmatter_dict)
+    from quote_vault_manager.models.destination_file import DestinationFile
+    new_frontmatter = DestinationFile.frontmatter_dict_to_str(frontmatter_dict)
     with open(file_path, 'r', encoding='utf-8') as f:
         file_content = f.read()
     parts = file_content.split('---', 2)
@@ -190,7 +190,7 @@ def _sync_quote_files(
                 results['quotes_updated'] += 1
         else:
             # Create new DestinationFile and save
-            from quote_vault_manager.quote_writer import frontmatter_dict_to_str
+            from quote_vault_manager.models.destination_file import DestinationFile
             frontmatter = {
                 'block_id': block_id,
                 'vault': vault_name,

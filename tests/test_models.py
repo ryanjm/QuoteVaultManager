@@ -63,12 +63,12 @@ def test_source_file_preserves_non_quote_content(tmp_path):
     assert '^Quote002' not in result
 
 def test_destination_file_from_file_and_save(tmp_path):
-    file_path = tmp_path / "dest.md"
-    content = "---\nblock_id: ^Quote001\n---\n\n> A quote\n^Quote001\n"
+    file_path = tmp_path / "Book - Quote001 - Test.md"
+    content = "---\n---\n\n> A quote\n"
     file_path.write_text(content)
     dest = DestinationFile.from_file(str(file_path))
-    assert dest.frontmatter["block_id"] == "^Quote001"
     assert dest.quote.text == "A quote"
+    assert dest.quote.block_id == "^Quote001"
     # Test save
     dest.save(str(file_path))
     assert file_path.read_text() == content 
