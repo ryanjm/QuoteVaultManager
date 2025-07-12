@@ -23,9 +23,10 @@ def test_source_file_from_file_and_save(tmp_path):
     assert len(source.quotes) == 2
     assert source.quotes[0].text == "A quote"
     assert source.quotes[0].block_id == "^Quote001"
-    # Test update_quote (edit first quote)
+    # Test direct quote editing (edit first quote)
     q1 = source.quotes[0]
-    source.update_quote(q1, "Edited quote")
+    q1.text = "Edited quote"
+    q1.needs_edit = True
     source.save()
     with open(file_path, 'r') as f:
         updated_content = f.read()
@@ -45,9 +46,10 @@ def test_source_file_preserves_non_quote_content(tmp_path):
     content = """# Header\n\nSome intro text.\n\n> A quote\n^Quote001\n\nSome middle text.\n\n> Another quote\n^Quote002\n\nFooter text."""
     file_path.write_text(content)
     source = SourceFile.from_file(str(file_path))
-    # Edit first quote
+    # Edit first quote directly
     q1 = source.quotes[0]
-    source.update_quote(q1, "Changed quote")
+    q1.text = "Changed quote"
+    q1.needs_edit = True
     # Unwrap second quote
     q2 = source.quotes[1]
     source.unwrap_quote(q2)

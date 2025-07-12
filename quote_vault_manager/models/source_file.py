@@ -134,14 +134,6 @@ class SourceFile:
                 return True
         return False
 
-    def update_quote(self, quote: Quote, new_text: Optional[str]) -> bool:
-        """Updates the text of a quote and marks it for editing."""
-        if quote:
-            quote.text = new_text
-            quote.needs_edit = True
-            return True
-        return False
-
     def unwrap_quote(self, quote: Quote) -> bool:
         """Unwraps a quote and marks it for unwrapping."""
         if quote:

@@ -74,8 +74,8 @@ graph TD
 graph TD
     A[Destination Vault] --> B[DestinationVault.load_files]
     B --> C[Find edited/deleted quotes]
-    C --> D[SourceFile.update_quote]
-    D --> E[SourceFile.unwrap_quote]
+    C --> D[SourceFile.overwrite_quote_in_source]
+    D --> E[SourceFile.unwrap_quote_in_source]
     E --> F[Update source files]
     F --> G[Source Vault]
 ```
