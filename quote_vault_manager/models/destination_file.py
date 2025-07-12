@@ -91,6 +91,9 @@ class DestinationFile:
         quote_text = self.quote.text or ''
         block_id = self.quote.block_id or ''
         
+        print(f"  DestinationFile.save: frontmatter={self.frontmatter}")
+        print(f"  DestinationFile.save: frontmatter_str={frontmatter_str}")
+        
         # Use source_path if available, otherwise extract from filename
         source_file = self.source_path or ''
         if not source_file and self.filename:
@@ -111,6 +114,9 @@ class DestinationFile:
         content = self._create_quote_content_template(
             quote_text, source_file, block_id, frontmatter_str, vault_name, vault_root
         )
+        
+        print(f"  DestinationFile.save: Writing content to {path}")
+        print(f"  DestinationFile.save: Content starts with: {content[:200]}...")
         
         with open(path, 'w', encoding='utf-8') as f:
             f.write(content)

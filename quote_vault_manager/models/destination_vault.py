@@ -74,7 +74,8 @@ class DestinationVault(BaseVault):
                     break
             if found:
                 updated = False
-                if found.quote.text != quote_text:
+                # Don't update quote text if the file is marked as edited
+                if found.quote.text != quote_text and not found.is_edited:
                     found.quote.text = quote_text
                     updated = True
                 if found.quote.block_id != block_id:
@@ -156,32 +157,6 @@ class DestinationVault(BaseVault):
         if not dry_run:
             self.commit_changes(dry_run=False)
         return results
-
-    def sync_edited_back(self, source_vault_path: str, dry_run: bool = False) -> int:
-        """Syncs all edited quotes back to their source files. Returns the count synced."""
-        return self._sync_edited_quotes(dry_run, source_vault_path)
-
-    def _sync_edited_quotes(self, dry_run: bool = False, source_vault_path: Optional[str] = None) -> int:
-        """Sync edited quotes back to source files using in-memory objects and flags."""
-        from .source_file import SourceFile
-        if not isinstance(self.directory, str) or not self.directory:
-            return 0
-        updated_count = 0
-        for dest in self.files:
-            if not dest.is_edited:
-                continue
-            if not dest.path:
-                continue
-            source_path, block_id, new_quote_text, fm = DestinationFile.get_edited_quote_info(dest.path, os.path.basename(dest.path))
-            if source_path is None or block_id is None or new_quote_text is None:
-                continue
-            if SourceFile.process_edited_quote(dest.path, source_path, block_id, new_quote_text, fm, dry_run, source_vault_path or ""):
-                updated_count += 1
-                dest.frontmatter['edited'] = False
-                dest.needs_update = True
-        if not dry_run:
-            self.commit_changes(dry_run=False)
-        return updated_count
 
     def find_quote_files_for_source(self, source_file: str) -> list:
         import os
