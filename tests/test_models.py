@@ -64,6 +64,43 @@ def test_source_file_preserves_non_quote_content(tmp_path):
     assert 'Footer text.' in result
     assert '^Quote002' not in result
 
+def test_source_file_unwrap_multiline_quote(tmp_path):
+    file_path = tmp_path / "source.md"
+    content = """# Header
+
+Some intro text.
+
+> This is a multi-line quote
+> that spans multiple lines
+> to test unwrapping functionality
+^Quote001
+
+Some middle text.
+
+> Another quote
+^Quote002
+
+Footer text."""
+    file_path.write_text(content)
+    source = SourceFile.from_file(str(file_path))
+    
+    # Unwrap the multi-line quote
+    q1 = source.quotes[0]
+    source.unwrap_quote(q1)
+    source.save()
+    
+    with open(file_path, 'r') as f:
+        result = f.read()
+    
+    # Verify the multi-line quote was unwrapped properly
+    expected_unwrapped = '"This is a multi-line quote\nthat spans multiple lines\nto test unwrapping functionality"'
+    assert expected_unwrapped in result
+    assert '^Quote001' not in result
+    assert 'Some middle text.' in result
+    assert '> Another quote' in result
+    assert '^Quote002' in result
+    assert 'Footer text.' in result
+
 def test_destination_file_from_file_and_save(tmp_path):
     file_path = tmp_path / "Book - Quote001 - Test.md"
     content = "---\n---\n\n> A quote\n"

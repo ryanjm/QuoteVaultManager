@@ -254,7 +254,7 @@ class SourceFile:
     def _process_blockquote_section(lines: list, i: int, target_block_id: str) -> tuple:
         quote_lines, i = SourceFile._collect_blockquote_lines(lines, i)
         if i < len(lines) and lines[i].strip() == target_block_id:
-            quote_text = ' '.join(quote_lines)
+            quote_text = '\n'.join(quote_lines)
             return [f'"{quote_text}"'], i + 1, True
         else:
             original_lines = []
