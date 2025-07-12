@@ -10,7 +10,7 @@ from quote_vault_manager.file_utils import get_book_title_from_path, get_vault_n
 
 def sync_source_file(
     source_file: str, 
-    destination_path: str, 
+    destination_vault, 
     dry_run: bool = False, 
     source_vault_path: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -19,7 +19,7 @@ def sync_source_file(
     Returns a dictionary with sync results.
     """
     results = _init_results(source_file)
-    vault_name = get_vault_name_from_path(source_vault_path) if source_vault_path else "Notes"
+    vault_name = destination_vault.source_vault.vault_name if destination_vault.source_vault else "Notes"
 
     # Use SourceFile object for all operations
     source = SourceFile.from_file(source_file)
@@ -36,10 +36,6 @@ def sync_source_file(
     # Prepare quotes_with_ids for downstream logic
     quotes_with_ids = [(q.text, q.block_id) for q in source.quotes]
     block_id_map = {i: q.block_id for i, q in enumerate(source.quotes) if q.block_id}
-
-    # Use DestinationVault for destination operations
-    from quote_vault_manager.models.destination_vault import DestinationVault
-    destination_vault = DestinationVault(destination_path)
     
     # Sync quotes to destination
     sync_results = destination_vault.sync_quotes_from_source(

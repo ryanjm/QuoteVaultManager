@@ -1,4 +1,5 @@
 from .destination_file import DestinationFile
+from .source_vault import SourceVault
 from typing import List, Optional, Dict, Any
 import os
 from .base_vault import BaseVault
@@ -8,8 +9,9 @@ class DestinationVault(BaseVault):
     files: List[DestinationFile]  # type: ignore
     
     """Represents a collection of destination (quote) files in a vault."""
-    def __init__(self, directory: str):
-        super().__init__(directory)
+    def __init__(self, directory: str, vault_name: str = "", source_vault: Optional['SourceVault'] = None):
+        super().__init__(directory, vault_name)
+        self.source_vault = source_vault
 
     def _load_files(self) -> List[DestinationFile]:
         """Loads all markdown destination files from the directory."""
@@ -18,7 +20,7 @@ class DestinationVault(BaseVault):
             for filename in filenames:
                 if filename.endswith('.md'):
                     path = os.path.join(root, filename)
-                    files.append(DestinationFile.from_file(path))
+                    files.append(DestinationFile.from_file(path, destination_vault=self))
         return files
 
     def transform_all(self, transform_fn):
@@ -83,14 +85,14 @@ class DestinationVault(BaseVault):
                     results['quotes_updated'] += 1
             else:
                 from .quote import Quote
+                from quote_vault_manager import VERSION
                 frontmatter = {
-                    'block_id': block_id,
-                    'vault': vault_name,
                     'delete': False,
                     'favorite': False,
-                    'edited': False
+                    'edited': False,
+                    'version': VERSION
                 }
-                new_dest = DestinationFile.new(frontmatter, Quote(quote_text, block_id), path=quote_file_path, source_path=source_file)
+                new_dest = DestinationFile.new(frontmatter, Quote(quote_text, block_id), path=quote_file_path, source_path=source_file, destination_vault=self)
                 self.files.append(new_dest)
                 results['quotes_created'] += 1
         if not dry_run:

@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
 class BaseVault(ABC):
-    def __init__(self, directory: str):
+    def __init__(self, directory: str, vault_name: str = ""):
         self.directory = directory
+        self.vault_name = vault_name
         self.files: List = self._load_files()
 
     @abstractmethod

@@ -4,7 +4,7 @@ Main synchronization orchestrator for the quote vault manager.
 
 from typing import Dict, Any
 from quote_vault_manager.config import load_config, ConfigError
-from quote_vault_manager.file_utils import has_sync_quotes_flag, get_markdown_files
+from quote_vault_manager.file_utils import has_sync_quotes_flag, get_markdown_files, get_vault_name_from_path
 from quote_vault_manager.services.transformation_manager import transformation_manager
 from quote_vault_manager.services.source_sync import sync_source_file
 from quote_vault_manager.models.source_vault import SourceVault
@@ -31,10 +31,12 @@ def sync_vaults(config: Dict[str, str], dry_run: bool = False) -> Dict[str, Any]
     
     source_vault_path = config['source_vault_path']
     destination_vault_path = config['destination_vault_path']
+    source_vault_name = get_vault_name_from_path(source_vault_path)
+    destination_vault_name = get_vault_name_from_path(destination_vault_path)
 
-    # Instantiate vaults
-    source_vault = SourceVault(source_vault_path)
-    destination_vault = DestinationVault(destination_vault_path)
+    # Instantiate vaults with proper names and relationships
+    source_vault = SourceVault(source_vault_path, source_vault_name)
+    destination_vault = DestinationVault(destination_vault_path, destination_vault_name, source_vault)
 
     # Step 0: Apply transformations to all quote files before sync
     destination_vault.transform_all(lambda dest: None)  # Placeholder for actual transformation logic

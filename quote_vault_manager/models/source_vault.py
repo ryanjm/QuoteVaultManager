@@ -7,8 +7,8 @@ from quote_vault_manager.services.source_sync import sync_source_file
 class SourceVault(BaseVault):
     files: List[SourceFile]  # type: ignore
     """Represents a collection of source files in a vault."""
-    def __init__(self, directory: str):
-        super().__init__(directory)
+    def __init__(self, directory: str, vault_name: str = ""):
+        super().__init__(directory, vault_name)
 
     def _load_files(self) -> List[SourceFile]:
         """Loads all markdown source files from the directory that have sync_quotes: true in frontmatter."""
@@ -59,7 +59,7 @@ class SourceVault(BaseVault):
             'errors': []
         }
         for source in self.files:
-            file_results = sync_source_file(source.path, destination_vault.directory, dry_run, self.directory)
+            file_results = sync_source_file(source.path, destination_vault, dry_run, self.directory)
             results['source_files_processed'] += 1
             results['total_quotes_processed'] += file_results['quotes_processed']
             results['total_quotes_created'] += file_results['quotes_created']

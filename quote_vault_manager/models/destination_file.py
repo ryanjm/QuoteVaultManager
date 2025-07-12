@@ -1,4 +1,5 @@
 from .quote import Quote
+from .destination_vault import DestinationVault
 from typing import Dict, Any, Optional
 
 class DestinationFile:
@@ -19,7 +20,7 @@ class DestinationFile:
 
     [Random Note](obsidian://advanced-uri?vault=Notes&commandid=random-note-open)
     """
-    def __init__(self, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None, *, marked_for_deletion: bool = False, needs_update: bool = False, is_new: bool = False):
+    def __init__(self, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None, *, marked_for_deletion: bool = False, needs_update: bool = False, is_new: bool = False, destination_vault: Optional['DestinationVault'] = None):
         """
         Initialize a DestinationFile.
         Args:
@@ -29,6 +30,7 @@ class DestinationFile:
             marked_for_deletion: If True, file will be deleted on commit.
             needs_update: If True, file will be updated on commit.
             is_new: If True, file is new and will be created on commit.
+            destination_vault: Reference to the DestinationVault this file belongs to.
         """
         self.frontmatter = frontmatter
         self.quote = quote
@@ -36,6 +38,7 @@ class DestinationFile:
         self.marked_for_deletion = marked_for_deletion
         self.needs_update = needs_update
         self.is_new = is_new
+        self.destination_vault = destination_vault
         import os
         self.filename = os.path.basename(path) if path else None
         self.source_path = None
@@ -60,7 +63,7 @@ class DestinationFile:
         return self.frontmatter.get('delete') is True
 
     @classmethod
-    def from_file(cls, path: str) -> 'DestinationFile':
+    def from_file(cls, path: str, destination_vault: Optional['DestinationVault'] = None) -> 'DestinationFile':
         """Parses the file at path and returns a DestinationFile with frontmatter and quote."""
         import os
         frontmatter_str, content = cls.read_quote_file_content(path)
@@ -69,7 +72,7 @@ class DestinationFile:
         filename = os.path.basename(path)
         block_id = cls.extract_block_id_from_filename(filename)
         quote = Quote(quote_text, block_id)
-        obj = cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=False)
+        obj = cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=False, destination_vault=destination_vault)
         obj.filename = filename
         obj.source_path = cls.extract_source_path_from_content(content)
         return obj
@@ -80,14 +83,28 @@ class DestinationFile:
             raise ValueError("Path must not be None when saving a DestinationFile.")
         import os
         os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        # Use the existing template to create proper content with source links
         frontmatter_str = self.frontmatter_dict_to_str(self.frontmatter)
         quote_text = self.quote.text or ''
-        # Format quote as blockquote
-        quote_lines = [f'> {line}' for line in quote_text.split('\n') if line.strip()]
-        if frontmatter_str:
-            content = f"---\n{frontmatter_str}\n---\n\n" + '\n'.join(quote_lines) + '\n'
-        else:
-            content = f"---\n---\n\n" + '\n'.join(quote_lines) + '\n'
+        block_id = self.quote.block_id or ''
+        
+        # Use source_path if available, otherwise extract from filename
+        source_file = self.source_path or ''
+        if not source_file and self.filename:
+            # Extract book title from filename as fallback
+            if ' - Quote' in self.filename:
+                source_file = self.filename.split(' - Quote')[0] + '.md'
+        
+        # Get vault name from object hierarchy
+        vault_name = "Notes"  # Default fallback
+        if self.destination_vault and self.destination_vault.source_vault:
+            vault_name = self.destination_vault.source_vault.vault_name
+        
+        content = self._create_quote_content_template(
+            quote_text, source_file, block_id, frontmatter_str, vault_name, ""
+        )
+        
         with open(path, 'w', encoding='utf-8') as f:
             f.write(content)
         self.is_new = False
@@ -263,9 +280,9 @@ class DestinationFile:
             return ""
 
     @classmethod
-    def new(cls, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None, source_path: Optional[str] = None) -> 'DestinationFile':
+    def new(cls, frontmatter: Dict[str, Any], quote: Quote, path: Optional[str] = None, source_path: Optional[str] = None, destination_vault: Optional['DestinationVault'] = None) -> 'DestinationFile':
         """Create a new DestinationFile with is_new=True."""
-        obj = cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=True)
+        obj = cls(frontmatter, quote, path=path, marked_for_deletion=False, needs_update=False, is_new=True, destination_vault=destination_vault)
         import os
         obj.filename = os.path.basename(path) if path else None
         obj.source_path = source_path
