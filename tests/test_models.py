@@ -108,6 +108,9 @@ def test_destination_file_from_file_and_save(tmp_path):
     dest = DestinationFile.from_file(str(file_path))
     assert dest.quote.text == "A quote"
     assert dest.quote.block_id == "^Quote001"
-    # Test save
+    # Test save - should add proper content with source links
     dest.save(str(file_path))
-    assert file_path.read_text() == content 
+    saved_content = file_path.read_text()
+    assert "> A quote" in saved_content
+    assert "**Source:**" in saved_content
+    assert "[Random Note]" in saved_content 

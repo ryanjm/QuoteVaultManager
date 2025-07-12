@@ -19,7 +19,17 @@ def sync_source_file(
     Returns a dictionary with sync results.
     """
     results = _init_results(source_file)
-    vault_name = destination_vault.source_vault.vault_name if destination_vault.source_vault else "Notes"
+    
+    # Handle both string path and DestinationVault object
+    if isinstance(destination_vault, str):
+        # Legacy API - create a temporary DestinationVault
+        from quote_vault_manager.models.destination_vault import DestinationVault
+        temp_dest_vault = DestinationVault(destination_vault)
+        vault_name = "Notes"  # Default for legacy API
+    else:
+        # New API - use the provided DestinationVault
+        temp_dest_vault = destination_vault
+        vault_name = destination_vault.source_vault.vault_name if destination_vault.source_vault else "Notes"
 
     # Use SourceFile object for all operations
     source = SourceFile.from_file(source_file)
@@ -38,13 +48,13 @@ def sync_source_file(
     block_id_map = {i: q.block_id for i, q in enumerate(source.quotes) if q.block_id}
     
     # Sync quotes to destination
-    sync_results = destination_vault.sync_quotes_from_source(
+    sync_results = temp_dest_vault.sync_quotes_from_source(
         source_file, quotes_with_ids, block_id_map, dry_run, vault_name, source_vault_path
     )
     results.update(sync_results)
     
     # Remove orphaned quotes
-    orphan_results = destination_vault.remove_orphaned_quotes_for_source(
+    orphan_results = temp_dest_vault.remove_orphaned_quotes_for_source(
         source_file, block_id_map, dry_run
     )
     results.update(orphan_results)

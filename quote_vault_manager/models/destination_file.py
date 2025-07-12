@@ -1,6 +1,8 @@
 from .quote import Quote
-from .destination_vault import DestinationVault
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .destination_vault import DestinationVault
 
 class DestinationFile:
     """
