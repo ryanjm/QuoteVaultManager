@@ -182,15 +182,3 @@ for source_file in get_markdown_files(source_vault_path):
 python3 quote_vault_manager/main.py --config config.yaml
 python3 quote_vault_manager/main.py --config config.yaml --dry-run
 ```
-
-## ✅ MVP Completion Checklist
-
-- [ ] YAML config parsing
-- [ ] File parsing and quote extraction
-- [ ] ID assignment and consistency
-- [ ] File writing and updates
-- [ ] Deletion and orphan detection
-- [ ] Logging to files
-- [ ] Dry-run mode
-- [ ] CLI entry point
-- [ ] Unit + manual tests

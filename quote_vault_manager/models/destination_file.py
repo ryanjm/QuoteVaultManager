@@ -103,8 +103,13 @@ class DestinationFile:
         if self.destination_vault and self.destination_vault.source_vault:
             vault_name = self.destination_vault.source_vault.vault_name
         
+        # Get source vault path for proper URI generation
+        vault_root = ""
+        if self.destination_vault and self.destination_vault.source_vault:
+            vault_root = self.destination_vault.source_vault.directory
+        
         content = self._create_quote_content_template(
-            quote_text, source_file, block_id, frontmatter_str, vault_name, ""
+            quote_text, source_file, block_id, frontmatter_str, vault_name, vault_root
         )
         
         with open(path, 'w', encoding='utf-8') as f:
