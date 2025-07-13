@@ -488,6 +488,20 @@ favorite: false
     assert '^Quote001' not in src_text
     assert results['total_quotes_unwrapped'] == 1
 
+def test_extract_book_title_from_filename_multiword():
+    from quote_vault_manager.models.destination_file import DestinationFile
+    filename = "Who Not How - Quote016 - Example quote.md"
+    book_title = DestinationFile.extract_book_title_from_filename(filename)
+    assert book_title == "Who Not How"
+    source_file = book_title + ".md"
+    assert source_file == "Who Not How.md"
+    # Also test fallback for single-word
+    filename2 = "DeepWork - Quote001 - Focus.md"
+    book_title2 = DestinationFile.extract_book_title_from_filename(filename2)
+    assert book_title2 == "DeepWork"
+    source_file2 = book_title2 + ".md"
+    assert source_file2 == "DeepWork.md"
+
 if __name__ == "__main__":
     test_setup_logging_and_log_sync_action_and_log_error()
     test_has_sync_quotes_flag()

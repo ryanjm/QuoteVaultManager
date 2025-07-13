@@ -98,8 +98,7 @@ class DestinationFile:
         source_file = self.source_path or ''
         if not source_file and self.filename:
             # Extract book title from filename as fallback
-            if ' - Quote' in self.filename:
-                source_file = self.filename.split(' - Quote')[0] + '.md'
+            source_file = self.extract_book_title_from_filename(self.filename) + '.md'
         
         # Get vault name from object hierarchy
         vault_name = "Notes"  # Default fallback
@@ -179,6 +178,13 @@ class DestinationFile:
             new_content = f"---\n{new_frontmatter}\n---\n{parts[2]}"
             with open(self.path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
+
+    @staticmethod
+    def extract_book_title_from_filename(filename: str) -> str:
+        """Extract the book title from a destination quote filename (everything up to the first ' - Quote')."""
+        if ' - Quote' in filename:
+            return filename.split(' - Quote')[0]
+        return filename.replace('.md', '')
 
     @staticmethod
     def extract_block_id_from_filename(filename: str) -> str:
